@@ -2,88 +2,107 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memories</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <meta name="description" content="A cinematic interactive romantic journey.">
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Nebula background layers -->
-    <div class="nebula nebula-1"></div>
-    <div class="nebula nebula-2"></div>
-    <div class="nebula nebula-3"></div>
-
-    <!-- Star field canvas -->
+    <!-- Parallax & Background Layers -->
+    <div id="parallax-bg">
+        <div class="nebula nebula-1"></div>
+        <div class="nebula nebula-2"></div>
+        <div class="nebula nebula-3"></div>
+    </div>
+    
     <canvas id="star-canvas"></canvas>
-
-    <!-- Fireworks canvas (final scene) -->
-    <canvas id="fireworks-canvas"></canvas>
-
-    <!-- Cursor glow -->
+    <canvas id="fx-canvas"></canvas>
+    
+    <!-- Cursor Glow -->
     <div class="cursor-glow" id="cursor-glow"></div>
 
-    <!-- Effects container -->
-    <div id="effects-container"></div>
+    <!-- Ambient Effects Container -->
+    <div id="effects-layer"></div>
 
-    <!-- Music toggle button -->
-    <button class="music-btn" id="music-btn" aria-label="Toggle music">
+    <!-- Music Toggle UI -->
+    <button class="music-toggle" id="music-toggle" aria-label="Toggle Music">
         <i class="fas fa-volume-xmark" id="music-icon"></i>
     </button>
 
-    <!-- LOADING SCREEN (Click to enter and start music) -->
-    <div id="loading-screen" class="screen active">
-        <div class="loading-stars" id="loading-stars"></div>
-        <div class="loading-text">Loading Our Universe...</div>
-        <div class="loading-bar">
-            <div class="loading-bar-fill" id="loading-bar-fill"></div>
-        </div>
-        <div class="loading-tap" id="loading-tap">Tap anywhere to enter</div>
-    </div>
-
-    <!-- HOME SCREEN -->
-    <div id="home-screen" class="screen">
-        <h1 class="home-title">Our Galaxy of Memories</h1>
-        <p class="home-subtitle">Every star hides a memory of us.<br>Find them all.</p>
-        <div class="stars-grid" id="stars-grid"></div>
-        <div class="progress-text">Memories Unlocked <span id="progress-count">0</span>/6</div>
-    </div>
-
-    <!-- PUZZLE SCREEN -->
-    <div id="puzzle-screen" class="screen">
-        <div class="puzzle-wrapper glass-card">
-            <button class="puzzle-back" id="puzzle-back" aria-label="Go back"><i class="fas fa-arrow-left"></i></button>
-            <h2 class="puzzle-title" id="puzzle-title"></h2>
-            <p class="puzzle-instruction" id="puzzle-instruction"></p>
-            <div class="puzzle-area" id="puzzle-area"></div>
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-inner glass-card">
+            <div class="achievement-icon">⭐</div>
+            <div class="achievement-text" id="achievement-text">Memory Unlocked</div>
         </div>
     </div>
 
-    <!-- REVEAL SCREEN -->
-    <div id="reveal-screen" class="screen">
-        <div class="reveal-container glass-card">
-            <div class="reveal-photo-wrap" id="reveal-photo-wrap">
-                <img id="reveal-photo" src="" alt="Memory photo">
+    <!-- SCREEN 1: LOADING -->
+    <div id="screen-loading" class="screen active">
+        <div class="loading-content">
+            <div class="loading-stars" id="loading-stars"></div>
+            <h2 class="loading-title">Loading Our Universe...</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="loading-bar"></div>
             </div>
-            <div class="reveal-text" id="reveal-text"></div>
-            <button class="btn" id="reveal-next-btn">Continue <i class="fas fa-arrow-right"></i></button>
+            <p class="loading-hint" id="loading-hint">Tap anywhere to enter</p>
         </div>
     </div>
 
-    <!-- FINAL SCREEN -->
-    <div id="final-screen" class="screen">
-        <svg class="final-heart" id="final-heart" viewBox="0 0 100 100" fill="none">
-            <path d="M50 88C25 65 5 50 5 30C5 15 17 5 30 5C38 5 45 9 50 16C55 9 62 5 70 5C83 5 95 15 95 30C95 50 75 65 50 88Z" fill="url(#heartGrad)" stroke="rgba(255,107,157,0.4)" stroke-width="1"/>
-            <defs>
-                <linearGradient id="heartGrad" x1="0" y1="0" x2="100" y2="100">
-                    <stop offset="0%" stop-color="#ff6b9d"/>
-                    <stop offset="100%" stop-color="#ff3366"/>
-                </linearGradient>
-            </defs>
-        </svg>
-        <div class="final-text" id="final-text"></div>
-        <button class="btn btn-glow" id="restart-btn">Restart Our Journey <i class="fas fa-redo"></i></button>
+    <!-- SCREEN 2: HOME -->
+    <div id="screen-home" class="screen">
+        <div class="home-content">
+            <h1 class="home-title">✨ Our Galaxy of Memories ✨</h1>
+            <p class="home-subtitle">Every star hides a memory of us.<br>Find them all.</p>
+            
+            <div class="stars-orbit" id="stars-grid">
+                <!-- Stars generated by JS -->
+            </div>
+
+            <div class="home-progress glass-card">
+                Memories Unlocked: <span id="progress-count">0</span> / 6
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: PUZZLE -->
+    <div id="screen-puzzle" class="screen">
+        <div class="puzzle-container glass-card">
+            <button class="back-btn" id="back-btn"><i class="fas fa-arrow-left"></i></button>
+            <h2 class="puzzle-title" id="puzzle-title"></h2>
+            <p class="puzzle-inst" id="puzzle-inst"></p>
+            <div class="puzzle-stage" id="puzzle-stage">
+                <!-- Puzzle elements injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: REVEAL -->
+    <div id="screen-reveal" class="screen">
+        <div class="reveal-container glass-card">
+            <!-- Special Frame for Puzzle 6 to prevent cropping -->
+            <div class="photo-frame" id="photo-frame">
+                <img id="reveal-img" src="" alt="Memory Photo">
+            </div>
+            <div class="typewriter-text" id="typewriter-text"></div>
+            <button class="next-btn" id="next-btn">Continue <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <!-- SCREEN 5: FINALE -->
+    <div id="screen-finale" class="screen">
+        <div class="finale-content">
+            <svg class="finale-heart" id="finale-heart" viewBox="0 0 100 100" fill="none">
+                <path d="M50 90C25 68 5 50 5 30C5 15 17 5 30 5C38 5 45 10 50 18C55 10 62 5 70 5C83 5 95 15 95 30C95 50 75 68 50 90Z" fill="url(#hGrad)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                <defs><linearGradient id="hGrad" x1="0" y1="0" x2="100" y2="100"><stop offset="0%" stop-color="#ff6b9d"/><stop offset="100%" stop-color="#c850c0"/></linearGradient></defs>
+            </svg>
+            <div class="typewriter-text finale-msg" id="finale-text"></div>
+            <button class="restart-btn" id="restart-btn">❤️ Restart Our Journey ❤️</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
