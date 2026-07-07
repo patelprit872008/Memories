@@ -1,23 +1,15 @@
 /* ================================================================
-   MEMORIES — Main Script
-   
-   NO MP3 NEEDED! 
-   This file contains a beautiful procedural "Fairytale" melody
-   generated using the Web Audio API. Just add your photos!
+   MEMORIES — Ultra-Premium Cinematic Interactive Script
+   Features: Procedural Music Box, Canvas FX, 6 Puzzles, Parallax
+   Fully offline · GitHub Pages compatible · localStorage
    ================================================================ */
 
-// ===== PHOTO URLS (Your local photos) =====
-var PHOTO_URLS = [
-    'assets/photo1.jpg',
-    'assets/photo2.jpg',
-    'assets/photo3.jpg',
-    'assets/photo4.jpg',
-    'assets/photo5.jpg',
-    'assets/photo6.jpg'
+// ===== CONFIGURATION =====
+const PHOTO_URLS = [
+    'assets/photo1.jpg', 'assets/photo2.jpg', 'assets/photo3.jpg',
+    'assets/photo4.jpg', 'assets/photo5.jpg', 'assets/photo6.jpg'
 ];
-
-// ===== MESSAGES FOR EACH PUZZLE =====
-var MESSAGES = [
+const MESSAGES = [
     "Every beautiful story starts with a single moment.\nOurs started with you.",
     "Every smile of yours became one of my favorite memories.",
     "No matter where life takes us,\nmy heart always finds its way back to you.",
@@ -25,305 +17,324 @@ var MESSAGES = [
     "If I had to choose again,\nI would still choose you.",
     "You are my favorite place,\nmy safest feeling,\nand my happiest adventure."
 ];
-
-// ===== PUZZLE TITLES AND INSTRUCTIONS =====
-var PUZZLE_INFO = [
-    { title: 'Constellation Puzzle', instruction: 'Drag the star to complete the constellation' },
-    { title: 'Jigsaw Puzzle', instruction: 'Tap two pieces to swap them and complete the image' },
-    { title: 'Memory Sequence', instruction: 'Watch the stars glow, then repeat the sequence' },
-    { title: 'Connect the Stars', instruction: 'Click the stars in order to draw a constellation' },
-    { title: 'Rotate Puzzle', instruction: 'Tap each piece to rotate it until the image is complete' },
-    { title: 'Find the Hidden Star', instruction: 'One star is different. Find it.' }
+const PUZZLE_INFO = [
+    { title: 'The Beginning',           inst: 'Drag the missing star into its correct place.' },
+    { title: 'Our Puzzle',              inst: 'Tap two pieces to swap them and complete the image.' },
+    { title: 'Galaxy Rhythm',           inst: 'Watch the sequence, then repeat it.' },
+    { title: 'Constellation Journey',   inst: 'Connect the stars in order to draw the constellation.' },
+    { title: 'Perfect Alignment',       inst: 'Tap pieces to rotate them until the image is correct.' },
+    { title: 'The Final Star',          inst: 'Find the hidden glowing star inside the galaxy.' }
 ];
 
-var STAR_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI'];
-
-// ===== APP STATE =====
-var progress = [false, false, false, false, false, false];
-var currentPuzzle = -1;
-var puzzleCleanup = null;
-var typewriterAbort = false;
+// ===== STATE =====
+let progress = [false, false, false, false, false, false];
+let puzzleCleanup = null;
+let typewriterAbort = false;
 
 // ===== DOM REFERENCES =====
-function $(id) { return document.getElementById(id); }
-var loadingScreen = $('loading-screen');
-var homeScreen = $('home-screen');
-var puzzleScreen = $('puzzle-screen');
-var revealScreen = $('reveal-screen');
-var finalScreen = $('final-screen');
-var loadingFill = $('loading-bar-fill');
-var loadingTap = $('loading-tap');
-var starsGrid = $('stars-grid');
-var progressCount = $('progress-count');
-var puzzleTitle = $('puzzle-title');
-var puzzleInstruction = $('puzzle-instruction');
-var puzzleArea = $('puzzle-area');
-var puzzleBack = $('puzzle-back');
-var revealPhotoWrap = $('reveal-photo-wrap');
-var revealPhoto = $('reveal-photo');
-var revealText = $('reveal-text');
-var revealNextBtn = $('reveal-next-btn');
-var finalHeart = $('final-heart');
-var finalText = $('final-text');
-var restartBtn = $('restart-btn');
-var cursorGlow = $('cursor-glow');
-var effectsContainer = $('effects-container');
-var fireworksCanvas = $('fireworks-canvas');
-var starCanvas = $('star-canvas');
-var musicBtn = $('music-btn');
-var musicIcon = $('music-icon');
+const $ = id => document.getElementById(id);
+const loadingScreen   = $('loading-screen'),   homeScreen   = $('home-screen');
+const puzzleScreen    = $('puzzle-screen'),     revealScreen = $('reveal-screen');
+const finalScreen     = $('final-screen');
+const loadingFill     = $('loading-bar-fill'),  loadingTap   = $('loading-tap');
+const starsGrid       = $('stars-grid'),        progressCount = $('progress-count');
+const puzzleTitle     = $('puzzle-title'),      puzzleInstruction = $('puzzle-instruction');
+const puzzleArea      = $('puzzle-area'),       puzzleBack   = $('puzzle-back');
+const revealPhotoWrap = $('reveal-photo-wrap'), revealPhoto  = $('reveal-photo');
+const revealText      = $('reveal-text'),       revealNextBtn = $('reveal-next-btn');
+const finalHeart      = $('final-heart'),       finalText    = $('final-text');
+const restartBtn      = $('restart-btn');
+const cursorGlow      = $('cursor-glow'),       effectsContainer = $('effects-container');
+const fireworksCanvas = $('fireworks-canvas'),  starCanvas   = $('star-canvas');
+const musicBtn        = $('music-btn'),         musicIcon    = $('music-icon');
 
-// ===== UTILITY FUNCTIONS =====
-function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
-function rand(min, max) { return Math.random() * (max - min) + min; }
-function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+// ===== UTILITIES =====
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand  = (a, b) => Math.random() * (b - a) + a;
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
 
 // ===== LOCAL STORAGE =====
 function saveProgress() {
-    try { localStorage.setItem('memories_progress', JSON.stringify(progress)); } catch(e) {}
+    try { localStorage.setItem('memories_v3', JSON.stringify(progress)); } catch (e) { /* silent */ }
 }
 function loadProgress() {
     try {
-        var saved = localStorage.getItem('memories_progress');
-        if (saved) {
-            var parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length === 6) progress = parsed;
-        }
-    } catch(e) {}
+        const s = localStorage.getItem('memories_v3');
+        if (s) progress = JSON.parse(s);
+    } catch (e) { /* silent */ }
 }
 
 // ===== SCREEN MANAGEMENT =====
 function showScreen(screen) {
-    var screens = document.querySelectorAll('.screen');
-    for (var i = 0; i < screens.length; i++) {
-        screens[i].classList.remove('active');
-    }
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     screen.classList.add('active');
 }
 
 /* ================================================================
-   FAIRYTALE MUSIC GENERATOR (Web Audio API)
-   A soft, romantic, music-box style melody
+   AUDIO SYSTEM — "Fairytale" Procedural Music Box
+   Generates a romantic melody using Web Audio API oscillators.
+   No external audio files needed.
    ================================================================ */
-var FairytaleMusic = (function() {
-    function FM() {
-        this.audioCtx = null;
-        this.masterGain = null;
-        this.isPlaying = false;
-        this.isMuted = false;
-        this.loopTimeout = null;
+const AudioSystem = (function () {
+    let ctx, masterGain, delayNode, delayFeedback, isPlaying = false, isMuted = true, loopId;
+
+    /* Initialize audio context and routing */
+    function init() {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = ctx.createGain();
+        masterGain.gain.value = 0; // Start silent
+        masterGain.connect(ctx.destination);
+
+        // Simple feedback delay for spaciousness
+        delayNode = ctx.createDelay();
+        delayNode.delayTime.value = 0.35;
+        delayFeedback = ctx.createGain();
+        delayFeedback.gain.value = 0.18;
+        const delayFilter = ctx.createBiquadFilter();
+        delayFilter.type = 'lowpass';
+        delayFilter.frequency.value = 1800;
+
+        delayNode.connect(delayFilter);
+        delayFilter.connect(delayFeedback);
+        delayFeedback.connect(delayNode);
+        delayNode.connect(masterGain);
     }
 
-    FM.prototype.init = function() {
-        // Initialize Audio Context (Requires user interaction first)
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        this.masterGain = this.audioCtx.createGain();
-        this.masterGain.gain.value = 0.3; // Keep it soft and romantic
-        this.masterGain.connect(this.audioCtx.destination);
-    };
+    /* Play a single music-box note with harmonics for timbre */
+    function playMusicBoxNote(freq, time, dur) {
+        if (!ctx) return;
+        // Fundamental + 2nd + 3rd harmonics (music box character)
+        const harmonics = [
+            { mult: 1, vol: 0.20, type: 'sine' },
+            { mult: 2, vol: 0.05, type: 'sine' },
+            { mult: 3, vol: 0.015, type: 'sine' }
+        ];
+        harmonics.forEach(h => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = h.type;
+            o.frequency.value = freq * h.mult;
+            // Music box envelope: instant attack, quick exponential decay
+            g.gain.setValueAtTime(0, time);
+            g.gain.linearRampToValueAtTime(h.vol, time + 0.004);
+            g.gain.exponentialRampToValueAtTime(Math.max(0.0001, h.vol * 0.08), time + dur * 0.6);
+            g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+            o.connect(g);
+            g.connect(masterGain);
+            g.connect(delayNode); // Route through delay for spaciousness
+            o.start(time);
+            o.stop(time + dur + 0.05);
+        });
+    }
 
-    // Play a single crystalline note
-    FM.prototype.playNote = function(freq, startTime, duration, type) {
-        if (!this.audioCtx || this.isMuted) return;
+    /* Play a soft pad chord underneath the melody */
+    function playPadChord(freqs, time, dur, vol) {
+        if (!ctx) return;
+        freqs.forEach(f => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'triangle';
+            o.frequency.value = f;
+            g.gain.setValueAtTime(0, time);
+            g.gain.linearRampToValueAtTime(vol, time + 0.3);
+            g.gain.setValueAtTime(vol, time + dur - 0.5);
+            g.gain.linearRampToValueAtTime(0.0001, time + dur);
+            o.connect(g);
+            g.connect(masterGain);
+            o.start(time);
+            o.stop(time + dur + 0.1);
+        });
+    }
 
-        var osc = this.audioCtx.createOscillator();
-        var gainNode = this.audioCtx.createGain();
-        
-        // Use sine or triangle for a soft music box feel
-        osc.type = type || 'sine';
-        osc.frequency.setValueAtTime(freq, startTime);
+    /* Main loop — plays a 32-beat romantic melody then schedules next */
+    function loop() {
+        if (!isPlaying) return;
+        const t = ctx.currentTime + 0.05;
+        const b = 60 / 72; // 72 BPM — slow, romantic
 
-        // Quick attack, long decay
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.02); 
-        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        // --- Melody: [frequency, startBeat, durationBeats] ---
+        const melody = [
+            // Phrase A — Cmaj7 (bars 1-2)
+            [659.25, 0,    0.9],   // E5
+            [783.99, 1,    0.45],  // G5
+            [1046.50, 1.5, 1.4],  // C6
+            [987.77, 3,    0.9],   // B5
+            // Am7 (bars 3-4)
+            [440.00, 4,    0.9],   // A4
+            [523.25, 5,    0.45],  // C5
+            [659.25, 5.5,  1.4],  // E5
+            [587.33, 7,    0.9],   // D5
+            // Phrase B — Fmaj7 (bars 5-6)
+            [523.25, 8,    0.9],   // C5
+            [698.46, 9,    0.45],  // F5
+            [880.00, 9.5,  1.4],  // A5
+            [783.99, 11,   0.9],   // G5
+            // G (bars 7-8)
+            [587.33, 12,   0.9],   // D5
+            [783.99, 13,   0.45],  // G5
+            [987.77, 13.5, 1.4],   // B5
+            [880.00, 15,   0.9],   // A5
+            // Phrase C — Cmaj7 (bars 9-10)
+            [659.25, 16,   1.3],   // E5
+            [1046.50, 17.5, 0.45], // C6
+            [783.99, 18,   0.9],   // G5
+            [659.25, 19,   0.9],   // E5
+            // Dm7 (bars 11-12)
+            [587.33, 20,   0.9],   // D5
+            [698.46, 21,   0.45],  // F5
+            [880.00, 21.5, 1.4],   // A5
+            [783.99, 23,   0.9],   // G5
+            // G7 → C (bars 13-16)
+            [493.88, 24,   0.45],  // B4
+            [587.33, 24.5, 0.45],  // D5
+            [783.99, 25,   1.4],   // G5
+            [698.46, 26.5, 0.45],  // F5
+            [659.25, 27,   0.9],   // E5
+            [523.25, 28,   1.3],   // C5
+            [659.25, 29.5, 0.45],  // E5
+            [783.99, 30,   0.9],   // G5
+            [1046.50, 31, 0.9],    // C6 (held)
+        ];
 
-        osc.connect(gainNode);
-        gainNode.connect(this.masterGain);
+        // Schedule every melody note
+        melody.forEach(([freq, startBeat, durBeats]) => {
+            playMusicBoxNote(freq, t + startBeat * b, durBeats * b);
+        });
 
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-    };
+        // --- Pad chords: [frequencies, startBeat, durationBeats, volume] ---
+        const chords = [
+            [[130.81, 164.81, 196.00, 246.94], 0,  8, 0.045],  // Cmaj7
+            [[110.00, 130.81, 164.81, 196.00], 8,  8, 0.04],   // Am7
+            [[87.31,  110.00, 130.81, 164.81], 16, 8, 0.04],   // Fmaj7
+            [[98.00,  123.47, 146.83, 174.61], 24, 4, 0.04],   // G
+            [[130.81, 164.81, 196.00, 246.94], 28, 4, 0.045],  // Cmaj7
+        ];
+        chords.forEach(([freqs, start, dur, vol]) => {
+            playPadChord(freqs, t + start * b, dur * b, vol);
+        });
 
-    // Play a soft chord
-    FM.prototype.playChord = function(freqs, startTime, duration) {
-        for (var i = 0; i < freqs.length; i++) {
-            this.playNote(freqs[i], startTime, duration, 'triangle');
+        // Schedule next loop slightly before current one ends
+        const loopDurationMs = 32 * b * 1000;
+        loopId = setTimeout(loop, loopDurationMs - 150);
+    }
+
+    return {
+        start() {
+            if (!ctx) init();
+            if (ctx.state === 'suspended') ctx.resume();
+            isPlaying = true;
+            loop();
+        },
+        stop() {
+            isPlaying = false;
+            clearTimeout(loopId);
+        },
+        toggleMute() {
+            isMuted = !isMuted;
+            if (masterGain) {
+                masterGain.gain.linearRampToValueAtTime(
+                    isMuted ? 0 : 0.38,
+                    ctx.currentTime + 0.3
+                );
+            }
+            return isMuted;
         }
     };
-
-    // The Fairytale Melody Sequence
-    FM.prototype.playMelody = function() {
-        if (!this.isPlaying) return;
-        var now = this.audioCtx.currentTime + 0.1;
-        var bpm = 100;
-        var beat = 60 / bpm;
-
-        // A beautiful, ethereal romantic progression (Cmaj7 -> Am -> Fmaj7 -> G)
-        // Using high octave frequencies for a "music box" timbre
-        
-        // Bar 1: Cmaj7 sparkle
-        this.playNote(523.25, now, beat * 2); // C5
-        this.playNote(659.25, now + beat * 0.5, beat * 1.5); // E5
-        this.playChord([523.25, 659.25, 783.99], now, beat * 3); // Underlying chord
-
-        // Bar 2: Am dreaminess
-        this.playNote(783.99, now + beat * 2, beat * 2); // G5
-        this.playNote(659.25, now + beat * 3, beat); // E5
-        this.playChord([440.00, 523.25, 659.25], now + beat * 2, beat * 2); // Am chord
-
-        // Bar 3: Fmaj7 lift
-        this.playNote(698.46, now + beat * 4, beat * 2); // F5
-        this.playNote(523.25, now + beat * 5, beat); // C5
-        this.playChord([349.23, 440.00, 523.25], now + beat * 4, beat * 2); // Fmaj7 chord
-
-        // Bar 4: G resolution
-        this.playNote(783.99, now + beat * 6, beat); // G5
-        this.playNote(659.25, now + beat * 7, beat); // E5
-        this.playChord([392.00, 493.88, 587.33], now + beat * 6, beat * 2); // G chord
-
-        // Bar 5: High octave sparkle (C)
-        this.playNote(1046.50, now + beat * 8, beat * 1.5); // C6
-        this.playNote(783.99, now + beat * 9, beat * 0.5); // G5
-        this.playNote(659.25, now + beat * 9.5, beat * 0.5); // E5
-
-        // Bar 6: Descending dream (Am)
-        this.playNote(880.00, now + beat * 10, beat); // A5
-        this.playNote(783.99, now + beat * 11, beat); // G5
-
-        // Bar 7: Gentle landing (F)
-        this.playNote(698.46, now + beat * 12, beat * 2); // F5
-
-        // Bar 8: Final soft resolve (G to C)
-        this.playNote(587.33, now + beat * 14, beat); // D5
-        this.playNote(523.25, now + beat * 15, beat); // C5
-        this.playChord([261.63, 329.63, 392.00], now + beat * 14, beat * 2); // Cmaj underlying
-
-        // Loop the melody seamlessly
-        var self = this;
-        this.loopTimeout = setTimeout(function() {
-            self.playMelody();
-        }, (beat * 16) * 1000);
-    };
-
-    FM.prototype.start = function() {
-        if (!this.audioCtx) this.init();
-        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        this.isPlaying = true;
-        this.playMelody();
-    };
-
-    FM.prototype.stop = function() {
-        this.isPlaying = false;
-        if (this.loopTimeout) clearTimeout(this.loopTimeout);
-    };
-
-    FM.prototype.toggleMute = function() {
-        this.isMuted = !this.isMuted;
-        if (this.masterGain) {
-            this.masterGain.gain.value = this.isMuted ? 0 : 0.3;
-        }
-        return this.isMuted;
-    };
-
-    return FM;
 })();
 
-var fairytaleMusic = new FairytaleMusic();
-
-// Music button click handler
-musicBtn.addEventListener('click', function(e) {
-    e.stopPropagation(); // Prevent triggering loading screen click
-    var isMuted = fairytaleMusic.toggleMute();
-    if (isMuted) {
-        musicIcon.className = 'fas fa-volume-xmark';
-        musicBtn.classList.remove('playing');
-    } else {
-        musicIcon.className = 'fas fa-volume-high';
-        musicBtn.classList.add('playing');
-    }
+// Music button handler
+musicBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const muted = AudioSystem.toggleMute();
+    musicIcon.className = muted ? 'fas fa-volume-xmark' : 'fas fa-volume-high';
+    musicBtn.classList.toggle('playing', !muted);
 });
 
 
-// ===== STAR FIELD (Canvas Rendering) =====
-var StarField = (function() {
-    function SF(canvas) {
+/* ================================================================
+   VISUAL EFFECTS — Canvas Star Field, Parallax, Particles
+   ================================================================ */
+
+// --- Star Field (Canvas) ---
+class StarField {
+    constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.stars = [];
         this.shootingStars = [];
         this.intensified = false;
         this.resize();
-        this.createStars(200);
+        this.createStars(250);
         this.animate();
-        var self = this;
-        window.addEventListener('resize', function() { self.resize(); });
-        setInterval(function() { self.addShootingStar(); }, 4000);
-        setTimeout(function() { self.addShootingStar(); }, 2000);
+        window.addEventListener('resize', () => this.resize());
+        // Spawn a shooting star every ~3.5 seconds
+        setInterval(() => this.addShootingStar(), 3500);
     }
-    SF.prototype.resize = function() {
+
+    resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
-    };
-    SF.prototype.createStars = function(count) {
+    }
+
+    createStars(count) {
         this.stars = [];
-        for (var i = 0; i < count; i++) {
+        const w = this.canvas.width, h = this.canvas.height;
+        for (let i = 0; i < count; i++) {
             this.stars.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
+                x: Math.random() * w,
+                y: Math.random() * h,
                 r: Math.random() * 1.5 + 0.3,
-                opacity: Math.random() * 0.7 + 0.2,
-                speed: Math.random() * 0.015 + 0.005,
-                phase: Math.random() * Math.PI * 2
+                o: Math.random() * 0.7 + 0.2,
+                s: Math.random() * 0.02 + 0.005,   // Twinkle speed
+                p: Math.random() * Math.PI * 2      // Phase offset
             });
         }
-    };
-    SF.prototype.intensify = function() {
+    }
+
+    intensify() {
         this.intensified = true;
-        this.createStars(800);
-    };
-    SF.prototype.addShootingStar = function() {
-        var w = this.canvas.width;
-        var h = this.canvas.height;
+        this.createStars(1000);
+    }
+
+    addShootingStar() {
         this.shootingStars.push({
-            x: rand(0, w * 0.7),
-            y: rand(0, h * 0.3),
-            len: rand(60, 120),
-            speed: rand(7, 12),
+            x: rand(0, this.canvas.width * 0.7),
+            y: rand(0, this.canvas.height * 0.3),
+            len: rand(80, 140),
+            speed: rand(8, 14),
             angle: Math.PI / 4 + rand(-0.2, 0.2),
             life: 1
         });
-    };
-    SF.prototype.animate = function() {
-        var self = this;
-        var ctx = this.ctx;
-        var w = this.canvas.width;
-        var h = this.canvas.height;
+    }
+
+    animate() {
+        const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
+        const t = Date.now() * 0.001;
         ctx.clearRect(0, 0, w, h);
-        var t = Date.now() * 0.001;
-        
-        for (var i = 0; i < this.stars.length; i++) {
-            var s = this.stars[i];
-            var tw = Math.sin(t * s.speed * 50 + s.phase);
-            var a = s.opacity * (0.5 + 0.5 * tw);
+
+        // Draw twinkling stars
+        this.stars.forEach(s => {
+            const alpha = s.o * (0.5 + 0.5 * Math.sin(t * s.s * 50 + s.p));
             ctx.beginPath();
             ctx.arc(s.x, s.y, Math.max(0.1, s.r), 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
             ctx.fill();
+            // Subtle glow on brighter stars
             if (s.r > 1.2) {
                 ctx.beginPath();
                 ctx.arc(s.x, s.y, Math.max(0.1, s.r * 3), 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255,255,255,' + (a * 0.08) + ')';
+                ctx.fillStyle = `rgba(255,255,255,${alpha * 0.08})`;
                 ctx.fill();
             }
-        }
-        
-        for (var j = this.shootingStars.length - 1; j >= 0; j--) {
-            var ss = this.shootingStars[j];
-            var dx = Math.cos(ss.angle) * ss.len;
-            var dy = Math.sin(ss.angle) * ss.len;
-            var grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - dx, ss.y - dy);
-            grad.addColorStop(0, 'rgba(255,255,255,' + ss.life + ')');
+        });
+
+        // Draw and update shooting stars
+        for (let i = this.shootingStars.length - 1; i >= 0; i--) {
+            const ss = this.shootingStars[i];
+            const dx = Math.cos(ss.angle) * ss.len;
+            const dy = Math.sin(ss.angle) * ss.len;
+            const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - dx, ss.y - dy);
+            grad.addColorStop(0, `rgba(255,255,255,${ss.life})`);
             grad.addColorStop(1, 'rgba(255,255,255,0)');
             ctx.beginPath();
             ctx.moveTo(ss.x, ss.y);
@@ -334,584 +345,942 @@ var StarField = (function() {
             ss.x += Math.cos(ss.angle) * ss.speed;
             ss.y += Math.sin(ss.angle) * ss.speed;
             ss.life -= 0.015;
-            if (ss.life <= 0) this.shootingStars.splice(j, 1);
+            if (ss.life <= 0) this.shootingStars.splice(i, 1);
         }
-        requestAnimationFrame(function() { self.animate(); });
-    };
-    return SF;
-})();
 
-var starField;
-
-// ===== CURSOR GLOW =====
-function initCursorGlow() {
-    document.addEventListener('mousemove', function(e) {
-        cursorGlow.style.left = e.clientX + 'px';
-        cursorGlow.style.top = e.clientY + 'px';
-    });
-}
-
-// ===== AMBIENT FLOATING HEARTS =====
-function spawnFloatingHeart() {
-    var heart = document.createElement('div');
-    heart.className = 'floating-heart';
-    heart.innerHTML = ['\u2764', '\uD83D\uDC95', '\u2728', '\uD83D\uDC96'][randInt(0, 3)];
-    heart.style.left = rand(5, 95) + '%';
-    heart.style.fontSize = rand(10, 18) + 'px';
-    heart.style.animationDuration = rand(6, 12) + 's';
-    document.body.appendChild(heart);
-    setTimeout(function() { heart.remove(); }, 13000);
-}
-function startFloatingHearts() {
-    setInterval(spawnFloatingHeart, 3000);
-    setTimeout(spawnFloatingHeart, 500);
-}
-
-// ===== CELEBRATION EFFECTS =====
-function createHeartBurst(x, y, count) {
-    count = count || 24;
-    for (var i = 0; i < count; i++) {
-        var h = document.createElement('div');
-        h.className = 'heart-particle';
-        h.innerHTML = ['\u2764', '\uD83D\uDC95', '\uD83D\uDC96', '\uD83D\uDC97'][randInt(0, 3)];
-        h.style.left = x + 'px';
-        h.style.top = y + 'px';
-        var angle = (Math.PI * 2 * i) / count + rand(-0.2, 0.2);
-        var dist = rand(60, 180);
-        h.style.setProperty('--tx', (Math.cos(angle) * dist) + 'px');
-        h.style.setProperty('--ty', (Math.sin(angle) * dist) + 'px');
-        h.style.setProperty('--rot', rand(-180, 180) + 'deg');
-        h.style.fontSize = rand(12, 22) + 'px';
-        effectsContainer.appendChild(h);
-        (function(el) { setTimeout(function() { el.remove(); }, 1300); })(h);
+        requestAnimationFrame(() => this.animate());
     }
 }
 
+let starField;
+
+// --- Cursor Glow & Mouse Parallax ---
+function initCursorAndParallax() {
+    const n1 = document.querySelector('.nebula-1');
+    const n2 = document.querySelector('.nebula-2');
+    document.addEventListener('mousemove', e => {
+        cursorGlow.style.left = e.clientX + 'px';
+        cursorGlow.style.top = e.clientY + 'px';
+        // Subtle parallax on nebula layers
+        const xShift = (e.clientX - window.innerWidth / 2) * 0.02;
+        const yShift = (e.clientY - window.innerHeight / 2) * 0.02;
+        if (n1) n1.style.transform = `translate(${xShift}px, ${yShift}px)`;
+        if (n2) n2.style.transform = `translate(${-xShift}px, ${-yShift}px)`;
+    });
+}
+
+// --- Ambient Floating Hearts (spawned periodically) ---
+function spawnFloatingHeart() {
+    const h = document.createElement('div');
+    h.className = 'floating-heart';
+    h.innerHTML = ['❤', '💕', '✨', '💖'][randInt(0, 3)];
+    h.style.left = rand(5, 95) + '%';
+    h.style.fontSize = rand(12, 20) + 'px';
+    h.style.animationDuration = rand(8, 15) + 's';
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), 16000);
+}
+setInterval(spawnFloatingHeart, 2500);
+
+// --- Heart Burst (explosion from a point) ---
+function createHeartBurst(x, y, count) {
+    count = count || 24;
+    for (let i = 0; i < count; i++) {
+        const h = document.createElement('div');
+        h.className = 'heart-particle';
+        h.innerHTML = ['❤', '💕', '💖', '💗'][randInt(0, 3)];
+        h.style.left = x + 'px';
+        h.style.top = y + 'px';
+        const angle = (Math.PI * 2 * i) / count;
+        const dist = rand(60, 180);
+        h.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+        h.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+        h.style.setProperty('--rot', rand(-180, 180) + 'deg');
+        effectsContainer.appendChild(h);
+        setTimeout(() => h.remove(), 1300);
+    }
+}
+
+// --- Confetti Shower ---
 function createConfetti(count) {
     count = count || 60;
-    var colors = ['#ff6b9d', '#ffd700', '#ff9a56', '#c084fc', '#4ade80', '#38bdf8', '#fb923c'];
-    for (var i = 0; i < count; i++) {
-        var c = document.createElement('div');
+    const cols = ['#ff6b9d', '#ffd700', '#ff9a56', '#c084fc', '#4ade80', '#38bdf8'];
+    for (let i = 0; i < count; i++) {
+        const c = document.createElement('div');
         c.className = 'confetti-piece';
         c.style.left = rand(0, 100) + '%';
-        c.style.backgroundColor = colors[randInt(0, colors.length - 1)];
-        c.style.width = rand(5, 10) + 'px';
-        c.style.height = rand(5, 10) + 'px';
+        c.style.backgroundColor = cols[randInt(0, cols.length - 1)];
+        c.style.width = rand(6, 10) + 'px';
+        c.style.height = rand(6, 10) + 'px';
         c.style.borderRadius = rand(0, 1) ? '50%' : '2px';
         c.style.animationDelay = rand(0, 0.8) + 's';
         c.style.animationDuration = rand(2.5, 4.5) + 's';
         c.style.setProperty('--rot', rand(360, 1080) + 'deg');
         effectsContainer.appendChild(c);
-        (function(el) { setTimeout(function() { el.remove(); }, 5500); })(c);
+        setTimeout(() => c.remove(), 5500);
     }
 }
 
-function createStarburst(x, y, rays) {
-    rays = rays || 14;
-    for (var i = 0; i < rays; i++) {
-        var ray = document.createElement('div');
-        ray.className = 'starburst-ray';
-        ray.style.transform = 'rotate(' + ((360 / rays) * i) + 'deg)';
-        ray.style.left = x + 'px';
-        ray.style.top = y + 'px';
-        effectsContainer.appendChild(ray);
-        (function(el) { setTimeout(function() { el.remove(); }, 900); })(ray);
+// --- Starburst Rays ---
+function createStarburst(x, y) {
+    for (let i = 0; i < 16; i++) {
+        const r = document.createElement('div');
+        r.className = 'starburst-ray';
+        r.style.setProperty('--ray-angle', (360 / 16) * i + 'deg');
+        r.style.left = x + 'px';
+        r.style.top = y + 'px';
+        effectsContainer.appendChild(r);
+        setTimeout(() => r.remove(), 900);
     }
 }
 
+// --- Combined Celebration ---
 function playCelebrationEffects() {
-    var cx = window.innerWidth / 2;
-    var cy = window.innerHeight / 2;
-    createHeartBurst(cx, cy, 28);
-    createConfetti(70);
-    createStarburst(cx, cy, 16);
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    createHeartBurst(cx, cy, 30);
+    createConfetti(80);
+    createStarburst(cx, cy);
 }
+
+// --- Achievement Popup ---
+function showAchievement(text) {
+    const pop = document.createElement('div');
+    pop.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:9999;' +
+        'background:rgba(0,0,0,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);' +
+        'border:1px solid rgba(255,215,0,0.3);padding:12px 28px;border-radius:50px;' +
+        'color:#ffd700;font-family:"Playfair Display",serif;font-size:16px;' +
+        'opacity:0;transition:all 0.5s cubic-bezier(0.16,1,0.3,1);' +
+        'box-shadow:0 4px 20px rgba(255,215,0,0.15);pointer-events:none;white-space:nowrap;';
+    pop.innerHTML = '\u2728 ' + text + ' Unlocked \u2728';
+    document.body.appendChild(pop);
+    requestAnimationFrame(() => {
+        pop.style.opacity = '1';
+        pop.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(() => {
+        pop.style.opacity = '0';
+        pop.style.transform = 'translateX(-50%) translateY(-20px)';
+        setTimeout(() => pop.remove(), 500);
+    }, 2500);
+}
+
 
 // ===== TYPEWRITER EFFECT =====
 async function typewriter(element, text, speed) {
-    speed = speed || 38;
+    speed = speed || 35;
     typewriterAbort = false;
     element.innerHTML = '<span class="cursor-blink"></span>';
     await sleep(400);
-    var cursor = element.querySelector('.cursor-blink');
-    for (var i = 0; i < text.length; i++) {
+    const cursor = element.querySelector('.cursor-blink');
+    for (let i = 0; i < text.length; i++) {
         if (typewriterAbort) break;
-        var ch = text[i];
+        const ch = text[i];
         if (ch === '\n') {
             element.insertBefore(document.createElement('br'), cursor);
-            await sleep(280);
-        } else if ('.!?'.indexOf(ch) !== -1) {
+            await sleep(300);
+        } else if ('.!?'.includes(ch)) {
             element.insertBefore(document.createTextNode(ch), cursor);
             await sleep(speed * 6);
-        } else if (',;:'.indexOf(ch) !== -1) {
+        } else if (',;:'.includes(ch)) {
             element.insertBefore(document.createTextNode(ch), cursor);
             await sleep(speed * 3);
-        } else if (ch === ' ') {
-            element.insertBefore(document.createTextNode(' '), cursor);
-            await sleep(speed * 0.4);
         } else {
             element.insertBefore(document.createTextNode(ch), cursor);
             await sleep(speed);
         }
     }
-    await sleep(600);
-    if (cursor && cursor.parentNode) cursor.remove();
+    await sleep(500);
+    if (cursor) cursor.remove();
 }
+
 
 // ===== LOADING SCREEN =====
 async function runLoading() {
-    var starsEl = $('loading-stars');
-    for (var i = 0; i < 30; i++) {
-        var dot = document.createElement('div');
-        dot.className = 'loading-star-dot';
-        dot.style.left = rand(5, 95) + '%';
-        dot.style.top = rand(5, 95) + '%';
-        dot.style.animationDelay = rand(0, 2) + 's';
-        dot.style.animationDuration = rand(1.5, 3) + 's';
-        var sz = rand(1, 3) + 'px';
-        dot.style.width = sz;
-        dot.style.height = sz;
-        starsEl.appendChild(dot);
+    const starsEl = $('loading-stars');
+    // Create decorative loading stars
+    for (let i = 0; i < 40; i++) {
+        const d = document.createElement('div');
+        d.className = 'loading-star-dot';
+        d.style.left = rand(5, 95) + '%';
+        d.style.top = rand(5, 95) + '%';
+        d.style.animationDelay = rand(0, 2) + 's';
+        d.style.animationDuration = rand(1.5, 3) + 's';
+        starsEl.appendChild(d);
     }
-    
-    var progressVal = 0;
-    return new Promise(function(resolve) {
-        var interval = setInterval(function() {
-            progressVal += rand(1.5, 4);
-            if (progressVal >= 100) {
-                progressVal = 100;
+    // Animate progress bar
+    let val = 0;
+    await new Promise(resolve => {
+        const int = setInterval(() => {
+            val += rand(1.5, 3.5);
+            if (val >= 100) {
+                val = 100;
                 loadingFill.style.width = '100%';
-                clearInterval(interval);
-                loadingTap.classList.add('visible'); // Show "Tap to enter"
+                clearInterval(int);
+                loadingTap.classList.add('visible');
                 resolve();
             } else {
-                loadingFill.style.width = progressVal + '%';
+                loadingFill.style.width = val + '%';
             }
         }, 80);
     });
 }
 
+
 // ===== HOME SCREEN =====
 function buildHomeScreen() {
     starsGrid.innerHTML = '';
-    var completedCount = 0;
-
-    for (var i = 0; i < 6; i++) {
-        var star = document.createElement('div');
+    let done = 0;
+    const labels = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+    for (let i = 0; i < 6; i++) {
+        const star = document.createElement('div');
         star.className = 'home-star';
         star.setAttribute('role', 'button');
         star.setAttribute('tabindex', '0');
+        star.setAttribute('aria-label', 'Memory ' + labels[i]);
 
         if (progress[i]) {
             star.classList.add('completed');
-            star.innerHTML = '\uD83C\uDF1F';
-            completedCount++;
+            star.innerHTML = '\uD83C\uDF1F'; // 🌟
+            done++;
         } else {
-            var isFirst = (i === 0);
-            var prevDone = (i > 0 && progress[i - 1]);
-            if (isFirst || prevDone) {
-                star.innerHTML = '\u2B50';
-            } else {
-                star.classList.add('locked');
-                star.innerHTML = '\u2B50';
-            }
+            const isOpen = (i === 0 || progress[i - 1]);
+            if (!isOpen) star.classList.add('locked');
+            star.innerHTML = '\u2B50'; // ⭐
         }
 
-        var label = document.createElement('span');
-        label.className = 'star-label';
-        label.textContent = STAR_LABELS[i];
-        star.appendChild(label);
+        const lbl = document.createElement('span');
+        lbl.className = 'star-label';
+        lbl.textContent = labels[i];
+        star.appendChild(lbl);
 
-        (function(idx, el) {
-            el.addEventListener('click', function() { handleStarClick(idx); });
-            el.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleStarClick(idx); }
-            });
-        })(i, star);
-
+        star.addEventListener('click', () => handleStarClick(i));
+        star.addEventListener('keydown', e => { if (e.key === 'Enter') handleStarClick(i); });
         starsGrid.appendChild(star);
     }
-    progressCount.textContent = completedCount;
+    progressCount.textContent = done;
 }
 
-function handleStarClick(index) {
-    var isFirst = (index === 0);
-    var prevDone = (index > 0 && progress[index - 1]);
-    if (!isFirst && !prevDone && !progress[index]) return;
-
-    if (progress[index]) {
-        showReveal(index);
-    } else {
-        startPuzzle(index);
-    }
+function handleStarClick(i) {
+    const isOpen = (i === 0 || progress[i - 1]);
+    if (!isOpen && !progress[i]) return;
+    if (progress[i]) showReveal(i);
+    else startPuzzle(i);
 }
+
 
 // ===== PUZZLE MANAGEMENT =====
-function startPuzzle(index) {
-    currentPuzzle = index;
-    puzzleTitle.textContent = PUZZLE_INFO[index].title;
-    puzzleInstruction.textContent = PUZZLE_INFO[index].instruction;
+function startPuzzle(i) {
+    puzzleTitle.textContent = PUZZLE_INFO[i].title;
+    puzzleInstruction.textContent = PUZZLE_INFO[i].inst;
     puzzleArea.innerHTML = '';
-
-    var inits = [initPuzzle1, initPuzzle2, initPuzzle3, initPuzzle4, initPuzzle5, initPuzzle6];
-    puzzleCleanup = inits[index](puzzleArea);
+    const inits = [initP1, initP2, initP3, initP4, initP5, initP6];
+    puzzleCleanup = inits[i](puzzleArea);
     showScreen(puzzleScreen);
 }
 
-puzzleBack.addEventListener('click', function() {
+puzzleBack.addEventListener('click', () => {
     if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
     showScreen(homeScreen);
 });
 
-async function completePuzzle(index) {
-    progress[index] = true;
+async function completePuzzle(i) {
+    progress[i] = true;
     saveProgress();
-    await sleep(600);
-    playCelebrationEffects();
+    showAchievement(PUZZLE_INFO[i].title);
     await sleep(800);
-    showReveal(index);
+    playCelebrationEffects();
+    await sleep(1000);
+    showReveal(i);
 }
 
+
 // ===== REVEAL SCREEN =====
-async function showReveal(index) {
+async function showReveal(i) {
     revealNextBtn.classList.remove('visible');
     revealPhotoWrap.classList.remove('visible');
     revealText.innerHTML = '';
-    revealPhoto.src = PHOTO_URLS[index];
+
+    // Reset inline overrides from previous reveals
+    revealPhotoWrap.style.padding = '';
+    revealPhotoWrap.style.background = '';
+    revealPhotoWrap.style.border = '';
+    revealPhotoWrap.style.boxShadow = '';
+    revealPhoto.style.objectFit = '';
+    revealPhoto.style.aspectRatio = '';
+    revealPhoto.style.maxHeight = '';
+    revealPhoto.style.width = '';
+    revealPhotoWrap.classList.remove('p6-special');
+
+    revealPhoto.src = PHOTO_URLS[i];
     showScreen(revealScreen);
 
-    await sleep(300);
-    revealPhotoWrap.classList.add('visible');
-    await sleep(500);
+    // Puzzle 6: STRICT no-crop protection for the face
+    if (i === 5) {
+        revealPhotoWrap.classList.add('p6-special');
+        // Absolute fallback inline styles as safety net
+        revealPhotoWrap.style.padding = '10px';
+        revealPhotoWrap.style.background = '#000';
+        revealPhotoWrap.style.border = '2px solid rgba(255,215,0,0.5)';
+        revealPhotoWrap.style.boxShadow = '0 0 40px rgba(255,107,157,0.4), 0 0 80px rgba(255,215,0,0.1)';
+        revealPhoto.style.objectFit = 'contain';
+        revealPhoto.style.aspectRatio = 'auto';
+        revealPhoto.style.maxHeight = '65vh';
+        revealPhoto.style.width = '100%';
+    }
 
-    await typewriter(revealText, MESSAGES[index], 36);
+    await sleep(400);
+    revealPhotoWrap.classList.add('visible');
+    await sleep(600);
+    await typewriter(revealText, MESSAGES[i], 34);
+
     await sleep(400);
     revealNextBtn.classList.add('visible');
-
-    var allDone = true;
-    for(var i=0; i<progress.length; i++) { if(!progress[i]) allDone = false; }
-
-    if (allDone) {
-        revealNextBtn.innerHTML = 'See Our Universe <i class="fas fa-heart"></i>';
-    } else {
-        revealNextBtn.innerHTML = 'Continue <i class="fas fa-arrow-right"></i>';
-    }
+    const allDone = progress.every(p => p);
+    revealNextBtn.innerHTML = allDone
+        ? 'See Our Universe <i class="fas fa-heart"></i>'
+        : 'Continue <i class="fas fa-arrow-right"></i>';
 }
 
-revealNextBtn.addEventListener('click', function() {
+revealNextBtn.addEventListener('click', () => {
     typewriterAbort = true;
-    var allDone = true;
-    for(var i=0; i<progress.length; i++) { if(!progress[i]) allDone = false; }
-    
-    if (allDone) {
-        showFinalScene();
-    } else {
-        buildHomeScreen();
-        showScreen(homeScreen);
-    }
+    if (progress.every(p => p)) showFinalScene();
+    else { buildHomeScreen(); showScreen(homeScreen); }
 });
 
-// ================================================================
-// PUZZLE 1: CONSTELLATION DRAG
-// ================================================================
-function initPuzzle1(area) {
-    var container = document.createElement('div');
-    container.className = 'p1-container';
-    area.appendChild(container);
 
-    var points = [
+/* ================================================================
+   PUZZLE IMPLEMENTATIONS
+   ================================================================ */
+
+// ---------- PUZZLE 1: Constellation Drag ----------
+function initP1(area) {
+    const c = document.createElement('div');
+    c.className = 'p1-container';
+    area.appendChild(c);
+
+    // Star positions forming a pentagon constellation
+    const pts = [
         { x: 150, y: 30 }, { x: 260, y: 100 }, { x: 220, y: 220 },
         { x: 80, y: 220 }, { x: 40, y: 100 }
     ];
-    var missingIdx = 2;
-    var connections = [[0,1],[1,2],[2,3],[3,4],[4,0]];
-    var ns = 'http://www.w3.org/2000/svg';
-    
-    var svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('width', '300'); svg.setAttribute('height', '260');
+    const miss = 2; // Index of missing star
+    const conn = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]];
+    const ns = 'http://www.w3.org/2000/svg';
+
+    // SVG for connection lines
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '300');
+    svg.setAttribute('height', '260');
     svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
-    container.appendChild(svg);
+    c.appendChild(svg);
 
-    var lines = [];
-    for (var c = 0; c < connections.length; c++) {
-        var a = connections[c][0], b = connections[c][1];
-        var line = document.createElementNS(ns, 'line');
-        line.setAttribute('x1', points[a].x); line.setAttribute('y1', points[a].y);
-        line.setAttribute('x2', points[b].x); line.setAttribute('y2', points[b].y);
-        var isDash = (a === missingIdx || b === missingIdx);
-        line.setAttribute('stroke', isDash ? 'rgba(255,215,0,0.12)' : 'rgba(255,215,0,0.25)');
-        line.setAttribute('stroke-width', '1.5');
-        if (isDash) line.setAttribute('stroke-dasharray', '5,5');
-        svg.appendChild(line);
-        lines.push({ line: line, dash: isDash });
-    }
+    const lines = [];
+    conn.forEach(([a, b]) => {
+        const l = document.createElementNS(ns, 'line');
+        l.setAttribute('x1', pts[a].x);
+        l.setAttribute('y1', pts[a].y);
+        l.setAttribute('x2', pts[b].x);
+        l.setAttribute('y2', pts[b].y);
+        const isDashed = a === miss || b === miss;
+        l.setAttribute('stroke', isDashed ? 'rgba(255,215,0,0.15)' : 'rgba(255,215,0,0.3)');
+        l.setAttribute('stroke-width', '1.5');
+        if (isDashed) l.setAttribute('stroke-dasharray', '5,5');
+        svg.appendChild(l);
+        lines.push({ l, d: isDashed });
+    });
 
-    for (var i = 0; i < points.length; i++) {
-        if (i === missingIdx) {
-            var target = document.createElement('div');
-            target.className = 'star-target';
-            target.style.left = points[i].x + 'px'; target.style.top = points[i].y + 'px';
-            container.appendChild(target);
+    // Render fixed stars and the target placeholder
+    pts.forEach((p, i) => {
+        if (i === miss) {
+            const t = document.createElement('div');
+            t.className = 'star-target';
+            t.style.left = p.x + 'px';
+            t.style.top = p.y + 'px';
+            c.appendChild(t);
         } else {
-            var star = document.createElement('div');
-            star.className = 'constellation-star';
-            star.style.left = points[i].x + 'px'; star.style.top = points[i].y + 'px';
-            container.appendChild(star);
+            const s = document.createElement('div');
+            s.className = 'constellation-star';
+            s.style.left = p.x + 'px';
+            s.style.top = p.y + 'px';
+            c.appendChild(s);
         }
-    }
+    });
 
-    var drag = document.createElement('div');
+    // Draggable star (starts below constellation)
+    const drag = document.createElement('div');
     drag.className = 'draggable-star';
-    drag.style.left = '140px'; drag.style.top = '270px';
-    container.appendChild(drag);
+    drag.style.left = '140px';
+    drag.style.top = '270px';
+    c.appendChild(drag);
 
-    var dragging = false, offX = 0, offY = 0;
+    let dragging = false, ox = 0, oy = 0;
 
-    function onDown(e) {
-        if (drag.classList.contains('snapped')) return;
-        dragging = true; drag.setPointerCapture(e.pointerId);
-        var rect = drag.getBoundingClientRect();
-        offX = e.clientX - rect.left - rect.width / 2;
-        offY = e.clientY - rect.top - rect.height / 2;
-        drag.style.zIndex = '100'; drag.style.transition = 'none';
-    }
-    function onMove(e) {
+    const onMove = e => {
         if (!dragging) return;
-        var cRect = container.getBoundingClientRect();
-        drag.style.left = (e.clientX - cRect.left - offX) + 'px';
-        drag.style.top = (e.clientY - cRect.top - offY) + 'px';
-    }
-    function onUp() {
-        if (!dragging) return; dragging = false;
-        var tgt = points[missingIdx];
-        var dx = parseFloat(drag.style.left) - tgt.x;
-        var dy = parseFloat(drag.style.top) - tgt.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 45) {
-            drag.style.left = tgt.x + 'px'; drag.style.top = tgt.y + 'px';
-            drag.classList.add('snapped');
-            for (var l = 0; l < lines.length; l++) {
-                if (lines[l].dash) {
-                    lines[l].line.setAttribute('stroke-dasharray', 'none');
-                    lines[l].line.setAttribute('stroke', 'rgba(255,215,0,0.25)');
-                }
-            }
-            var t = container.querySelector('.star-target'); if (t) t.style.display = 'none';
-            setTimeout(function() { completePuzzle(0); }, 700);
-        }
-    }
+        const r = c.getBoundingClientRect();
+        drag.style.left = (e.clientX - r.left - ox) + 'px';
+        drag.style.top = (e.clientY - r.top - oy) + 'px';
+    };
 
-    drag.addEventListener('pointerdown', onDown);
+    const onUp = () => {
+        if (!dragging) return;
+        dragging = false;
+        const t = pts[miss];
+        const dx = parseFloat(drag.style.left) - t.x;
+        const dy = parseFloat(drag.style.top) - t.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 45) {
+            drag.style.left = t.x + 'px';
+            drag.style.top = t.y + 'px';
+            drag.classList.add('snapped');
+            // Solidify dashed lines
+            lines.forEach(item => {
+                if (item.d) {
+                    item.l.setAttribute('stroke-dasharray', 'none');
+                    item.l.setAttribute('stroke', 'rgba(255,215,0,0.3)');
+                }
+            });
+            const tg = c.querySelector('.star-target');
+            if (tg) tg.style.display = 'none';
+            setTimeout(() => completePuzzle(0), 700);
+        }
+    };
+
+    drag.addEventListener('pointerdown', e => {
+        if (drag.classList.contains('snapped')) return;
+        dragging = true;
+        drag.setPointerCapture(e.pointerId);
+        const r = drag.getBoundingClientRect();
+        ox = e.clientX - r.left - r.width / 2;
+        oy = e.clientY - r.top - r.height / 2;
+    });
     drag.addEventListener('pointermove', onMove);
     drag.addEventListener('pointerup', onUp);
     drag.style.touchAction = 'none';
-    return function() { dragging = false; };
+
+    return () => { dragging = false; };
 }
 
-// ================================================================
-// PUZZLE 2: JIGSAW SWAP
-// ================================================================
-function initPuzzle2(area) {
-    var grid = document.createElement('div'); grid.className = 'jigsaw-grid'; area.appendChild(grid);
-    var positions = [{bgX:'0%',bgY:'0%'},{bgX:'100%',bgY:'0%'},{bgX:'0%',bgY:'100%'},{bgX:'100%',bgY:'100%'}];
-    var order = [0, 1, 2, 3];
-    do { for(var i=3;i>0;i--){var j=randInt(0,i);var t=order[i];order[i]=order[j];order[j]=t;} } 
-    while (order[0]===0 && order[1]===1 && order[2]===2 && order[3]===3);
 
-    var pieces = [];
-    for(var s=0; s<order.length; s++){
-        var posIdx = order[s]; var piece = document.createElement('div'); piece.className='jigsaw-piece';
-        piece.style.backgroundImage = 'url('+PHOTO_URLS[1]+')';
-        piece.style.backgroundPosition = positions[posIdx].bgX+' '+positions[posIdx].bgY;
-        piece.dataset.posIndex = posIdx; piece.setAttribute('tabindex','0');
-        grid.appendChild(piece); pieces.push(piece);
-    }
-    var selected = null;
-    function handlePieceClick(p){
-        if(p.classList.contains('correct')) return;
-        if(!selected){ selected=p; p.classList.add('selected'); }
-        else if(selected===p){ selected.classList.remove('selected'); selected=null; }
+// ---------- PUZZLE 2: Jigsaw Swap ----------
+function initP2(area) {
+    const g = document.createElement('div');
+    g.className = 'jigsaw-grid';
+    area.appendChild(g);
+
+    const pos = [
+        { bgX: '0%', bgY: '0%' }, { bgX: '100%', bgY: '0%' },
+        { bgX: '0%', bgY: '100%' }, { bgX: '100%', bgY: '100%' }
+    ];
+    // Shuffle order, ensuring it's not already solved
+    let ord = [0, 1, 2, 3];
+    do {
+        for (let i = 3; i > 0; i--) {
+            const j = randInt(0, i);
+            [ord[i], ord[j]] = [ord[j], ord[i]];
+        }
+    } while (ord.every((v, i) => v === i));
+
+    const pcs = [];
+    ord.forEach((pi, si) => {
+        const p = document.createElement('div');
+        p.className = 'jigsaw-piece';
+        p.style.backgroundImage = 'url(' + PHOTO_URLS[1] + ')';
+        p.style.backgroundPosition = pos[pi].bgX + ' ' + pos[pi].bgY;
+        p.dataset.pi = pi;
+        p.setAttribute('tabindex', '0');
+        g.appendChild(p);
+        pcs.push(p);
+    });
+
+    let sel = null;
+    const click = p => {
+        if (p.classList.contains('correct')) return;
+        if (!sel) { sel = p; p.classList.add('selected'); }
+        else if (sel === p) { sel.classList.remove('selected'); sel = null; }
         else {
-            var tBg=selected.style.backgroundPosition, tIdx=selected.dataset.posIndex;
-            selected.style.backgroundPosition=p.style.backgroundPosition; selected.dataset.posIndex=p.dataset.posIndex;
-            p.style.backgroundPosition=tBg; p.dataset.posIndex=tIdx;
-            selected.classList.remove('selected'); selected=null; checkSolved();
+            // Swap background positions and data
+            const tBg = sel.style.backgroundPosition, tPi = sel.dataset.pi;
+            sel.style.backgroundPosition = p.style.backgroundPosition;
+            sel.dataset.pi = p.dataset.pi;
+            p.style.backgroundPosition = tBg;
+            p.dataset.pi = tPi;
+            sel.classList.remove('selected');
+            sel = null;
+            // Check if solved
+            let ok = true;
+            pcs.forEach((pc, i) => {
+                if (+pc.dataset.pi === i) pc.classList.add('correct');
+                else { pc.classList.remove('correct'); ok = false; }
+            });
+            if (ok) setTimeout(() => completePuzzle(1), 600);
         }
-    }
-    function checkSolved(){
-        var solved=true;
-        for(var i=0;i<pieces.length;i++){
-            if(parseInt(pieces[i].dataset.posIndex)===i) pieces[i].classList.add('correct');
-            else { pieces[i].classList.remove('correct'); solved=false; }
-        }
-        if(solved) setTimeout(function(){completePuzzle(1);}, 600);
-    }
-    for(var p=0;p<pieces.length;p++){
-        (function(el){ el.onclick=function(){handlePieceClick(el);}; el.onkeydown=function(e){if(e.key==='Enter')handlePieceClick(el);}; })(pieces[p]);
-    }
-    return function(){};
+    };
+    pcs.forEach(p => {
+        p.onclick = () => click(p);
+        p.onkeydown = e => { if (e.key === 'Enter') click(p); };
+    });
+    return () => {};
 }
 
-// ================================================================
-// PUZZLE 3: MEMORY SEQUENCE
-// ================================================================
-function initPuzzle3(area) {
-    var wrap=document.createElement('div'); wrap.style.textAlign='center'; area.appendChild(wrap);
-    var c=document.createElement('div'); c.className='memory-stars'; wrap.appendChild(c);
-    var status=document.createElement('div'); status.className='memory-status'; status.textContent='Watch carefully...'; wrap.appendChild(status);
-    var icons=['\u2726','\u2727','\u27E1','\u2736','\u2734'], els=[];
-    for(var i=0;i<5;i++){var s=document.createElement('div');s.className='memory-star disabled';s.innerHTML=icons[i];s.dataset.index=i;s.setAttribute('tabindex','0');c.appendChild(s);els.push(s);}
-    var seq=[2,0,4,1], inp=[], accepting=false;
-    function flash(idx,dur){dur=dur||500;return new Promise(function(r){els[idx].classList.add('flash');setTimeout(function(){els[idx].classList.remove('flash');setTimeout(r,200);},dur);});}
-    async function playSeq(){
-        status.textContent='Watch carefully...'; accepting=false;
-        for(var i=0;i<els.length;i++) els[i].classList.add('disabled');
-        await sleep(600); for(var j=0;j<seq.length;j++) await flash(seq[j],500);
-        status.textContent='Your turn! Repeat the sequence.';
-        for(var k=0;k<els.length;k++) els[k].classList.remove('disabled');
-        inp=[]; accepting=true;
+
+// ---------- PUZZLE 3: Memory Sequence ----------
+function initP3(area) {
+    const w = document.createElement('div');
+    w.style.textAlign = 'center';
+    area.appendChild(w);
+
+    const sc = document.createElement('div');
+    sc.className = 'memory-stars';
+    w.appendChild(sc);
+
+    const st = document.createElement('div');
+    st.className = 'memory-status';
+    st.textContent = 'Watch carefully...';
+    w.appendChild(st);
+
+    const icons = ['\u2726', '\u2727', '\u27E1', '\u2736', '\u2734']; // ✦✧⟡✶✴
+    const els = [];
+    for (let i = 0; i < 5; i++) {
+        const s = document.createElement('div');
+        s.className = 'memory-star disabled';
+        s.innerHTML = icons[i];
+        s.dataset.i = i;
+        s.setAttribute('tabindex', '0');
+        sc.appendChild(s);
+        els.push(s);
     }
-    function click(idx){
-        if(!accepting) return;
-        if(seq[inp.length]===idx){
-            els[idx].classList.add('correct-flash'); setTimeout(function(){els[idx].classList.remove('correct-flash');},400);
-            inp.push(idx);
-            if(inp.length===seq.length){ accepting=false; status.textContent='Perfect!'; for(var i=0;i<els.length;i++) els[i].classList.add('disabled'); setTimeout(function(){completePuzzle(2);},700); }
+
+    const seq = [2, 0, 4, 1]; // Sequence to memorize
+    let inp = [], acc = false;
+
+    const flash = (i, d) => {
+        d = d || 500;
+        return new Promise(r => {
+            els[i].classList.add('flash');
+            setTimeout(() => {
+                els[i].classList.remove('flash');
+                setTimeout(r, 200);
+            }, d);
+        });
+    };
+
+    async function play() {
+        st.textContent = 'Watch carefully...';
+        acc = false;
+        els.forEach(e => e.classList.add('disabled'));
+        await sleep(600);
+        for (const i of seq) await flash(i);
+        st.textContent = 'Your turn!';
+        els.forEach(e => e.classList.remove('disabled'));
+        inp = [];
+        acc = true;
+    }
+
+    const click = i => {
+        if (!acc) return;
+        if (seq[inp.length] === i) {
+            els[i].classList.add('flash');
+            setTimeout(() => els[i].classList.remove('flash'), 400);
+            inp.push(i);
+            if (inp.length === seq.length) {
+                acc = false;
+                st.textContent = 'Perfect!';
+                els.forEach(e => e.classList.add('disabled'));
+                setTimeout(() => completePuzzle(2), 700);
+            }
         } else {
-            els[idx].classList.add('wrong'); setTimeout(function(){els[idx].classList.remove('wrong');},500);
-            status.textContent='Wrong! Watch again...'; inp=[]; accepting=false; setTimeout(playSeq, 1200);
+            els[i].classList.add('wrong');
+            setTimeout(() => els[i].classList.remove('wrong'), 500);
+            st.textContent = 'Wrong! Watch again...';
+            inp = [];
+            acc = false;
+            setTimeout(play, 1200);
         }
+    };
+
+    els.forEach(e => {
+        e.onclick = () => click(+e.dataset.i);
+        e.onkeydown = x => { if (x.key === 'Enter') click(+e.dataset.i); };
+    });
+    setTimeout(play, 500);
+    return () => { acc = false; };
+}
+
+
+// ---------- PUZZLE 4: Connect Stars ----------
+function initP4(area) {
+    const c = document.createElement('div');
+    c.className = 'p4-container';
+    area.appendChild(c);
+
+    // Hexagonal star pattern
+    const pts = [
+        { x: 150, y: 240 }, { x: 50, y: 130 }, { x: 60, y: 60 },
+        { x: 150, y: 90 }, { x: 240, y: 60 }, { x: 250, y: 130 }
+    ];
+    const ord = [0, 1, 2, 3, 4, 5, 0]; // Order to connect (back to start)
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '300');
+    svg.setAttribute('height', '280');
+    svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    c.appendChild(svg);
+
+    const els = [], conn = [], lines = [];
+
+    pts.forEach((p, i) => {
+        const s = document.createElement('div');
+        s.className = 'p4-star';
+        s.style.left = p.x + 'px';
+        s.style.top = p.y + 'px';
+        s.dataset.i = i;
+        s.setAttribute('tabindex', '0');
+        c.appendChild(s);
+        els.push(s);
+    });
+
+    const hint = document.createElement('div');
+    hint.className = 'p4-hint';
+    hint.textContent = 'Start from the bottom star';
+    area.appendChild(hint);
+
+    const drawLine = (a, b) => {
+        const l = document.createElementNS(ns, 'line');
+        l.setAttribute('x1', pts[a].x);
+        l.setAttribute('y1', pts[a].y);
+        l.setAttribute('x2', pts[b].x);
+        l.setAttribute('y2', pts[b].y);
+        l.setAttribute('stroke', 'rgba(255,215,0,0.6)');
+        l.setAttribute('stroke-width', '2');
+        l.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(l);
+        return l;
+    };
+
+    const reset = () => {
+        conn.length = 0;
+        lines.forEach(l => l.remove());
+        lines.length = 0;
+        els.forEach(e => { e.classList.remove('connected', 'wrong'); });
+    };
+
+    const click = i => {
+        if (i === ord[conn.length]) {
+            if (conn.length > 0) lines.push(drawLine(conn[conn.length - 1], i));
+            conn.push(i);
+            els[i].classList.add('connected');
+            if (conn.length === ord.length) setTimeout(() => completePuzzle(3), 600);
+        } else {
+            els[i].classList.add('wrong');
+            setTimeout(() => els[i].classList.remove('wrong'), 500);
+            reset();
+        }
+    };
+
+    els.forEach(e => {
+        e.onclick = () => click(+e.dataset.i);
+        e.onkeydown = x => { if (x.key === 'Enter') click(+e.dataset.i); };
+    });
+    return () => { lines.forEach(l => l.remove()); };
+}
+
+
+// ---------- PUZZLE 5: Rotate Puzzle ----------
+function initP5(area) {
+    const g = document.createElement('div');
+    g.className = 'rotate-grid';
+    area.appendChild(g);
+
+    const pos = [
+        { bgX: '0%', bgY: '0%' }, { bgX: '100%', bgY: '0%' },
+        { bgX: '0%', bgY: '100%' }, { bgX: '100%', bgY: '100%' }
+    ];
+    const pcs = [];
+    // Random rotations (1, 2, or 3 quarter-turns — never 0)
+    const rots = [randInt(1, 3), randInt(1, 3), randInt(1, 3), randInt(1, 3)];
+
+    for (let i = 0; i < 4; i++) {
+        const p = document.createElement('div');
+        p.className = 'rotate-piece';
+        p.style.backgroundImage = 'url(' + PHOTO_URLS[4] + ')';
+        p.style.backgroundPosition = pos[i].bgX + ' ' + pos[i].bgY;
+        p.style.transform = 'rotate(' + (rots[i] * 90) + 'deg)';
+        p.dataset.r = rots[i];
+        p.setAttribute('tabindex', '0');
+        g.appendChild(p);
+        pcs.push(p);
     }
-    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
-    setTimeout(playSeq, 500);
-    return function(){accepting=false;};
+
+    const click = p => {
+        let r = (+p.dataset.r + 1) % 4;
+        p.dataset.r = r;
+        p.style.transform = 'rotate(' + (r * 90) + 'deg)';
+        if (r === 0) p.classList.add('correct');
+        else p.classList.remove('correct');
+        if (pcs.every(pc => +pc.dataset.r === 0)) setTimeout(() => completePuzzle(4), 600);
+    };
+
+    pcs.forEach(p => {
+        p.onclick = () => click(p);
+        p.onkeydown = e => { if (e.key === 'Enter') click(p); };
+    });
+    return () => {};
 }
 
-// ================================================================
-// PUZZLE 4: CONNECT THE STARS
-// ================================================================
-function initPuzzle4(area) {
-    var con=document.createElement('div'); con.className='p4-container'; area.appendChild(con);
-    var pts=[{x:150,y:240},{x:50,y:130},{x:60,y:60},{x:150,y:90},{x:240,y:60},{x:250,y:130}];
-    var order=[0,1,2,3,4,5,0], ns='http://www.w3.org/2000/svg';
-    var svg=document.createElementNS(ns,'svg'); svg.setAttribute('width','300'); svg.setAttribute('height','280');
-    svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;'; con.appendChild(svg);
-    var els=[], conn=[], lines=[];
-    for(var i=0;i<pts.length;i++){var s=document.createElement('div');s.className='p4-star';s.style.left=pts[i].x+'px';s.style.top=pts[i].y+'px';s.dataset.index=i;s.setAttribute('tabindex','0');con.appendChild(s);els.push(s);}
-    var hint=document.createElement('div');hint.className='p4-hint';hint.textContent='Start from the bottom star';area.appendChild(hint);
-    function drawLine(f,t){var l=document.createElementNS(ns,'line');l.setAttribute('x1',pts[f].x);l.setAttribute('y1',pts[f].y);l.setAttribute('x2',pts[t].x);l.setAttribute('y2',pts[t].y);l.setAttribute('stroke','rgba(255,215,0,0.5)');l.setAttribute('stroke-width','2');l.setAttribute('stroke-linecap','round');svg.appendChild(l);return l;}
-    function reset(){conn=[];for(var i=0;i<lines.length;i++)lines[i].remove();lines=[];for(var j=0;j<els.length;j++)els[j].classList.remove('connected','wrong-star');}
-    function click(idx){
-        if(idx===order[conn.length]){
-            if(conn.length>0){var p=conn[conn.length-1];lines.push(drawLine(p,idx));}
-            conn.push(idx); els[idx].classList.add('connected');
-            if(conn.length===order.length) setTimeout(function(){completePuzzle(3);},600);
-        } else { els[idx].classList.add('wrong-star'); setTimeout(function(){els[idx].classList.remove('wrong-star');},500); reset(); }
+
+// ---------- PUZZLE 6: Find Hidden Star ----------
+function initP6(area) {
+    const c = document.createElement('div');
+    c.className = 'p6-container';
+    area.appendChild(c);
+
+    const st = document.createElement('div');
+    st.className = 'p6-status';
+    st.textContent = 'Look closely...';
+    area.appendChild(st);
+
+    const total = 50;
+    const hid = randInt(0, total - 1); // Hidden star index
+    let wrong = 0, found = false, els = [];
+
+    for (let i = 0; i < total; i++) {
+        const s = document.createElement('div');
+        s.className = 'p6-star';
+        let sz = (i === hid) ? 6 : rand(3, 8);
+        s.style.width = sz + 'px';
+        s.style.height = sz + 'px';
+        s.style.left = rand(5, 95) + '%';
+        s.style.top = rand(5, 95) + '%';
+        s.style.opacity = rand(0.3, 0.9);
+        if (i === hid) {
+            s.classList.add('hidden-star');
+            s.style.opacity = '0.4';
+        }
+        s.dataset.i = i;
+        s.setAttribute('tabindex', '0');
+        c.appendChild(s);
+        els.push(s);
     }
-    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
-    return function(){for(var i=0;i<lines.length;i++)lines[i].remove();};
+
+    const click = i => {
+        if (found) return;
+        if (i === hid) {
+            found = true;
+            els[i].classList.add('found-star');
+            st.textContent = 'You found it!';
+            setTimeout(() => completePuzzle(5), 800);
+        } else {
+            wrong++;
+            els[i].classList.add('wrong-click');
+            setTimeout(() => els[i].classList.remove('wrong-click'), 400);
+            if (wrong >= 4) {
+                st.textContent = 'Hint: Look for the subtle pulse...';
+                els[hid].classList.add('hint-active');
+            } else {
+                st.textContent = 'Not that one. (' + wrong + '/4)';
+            }
+        }
+    };
+
+    els.forEach(e => {
+        e.onclick = () => click(+e.dataset.i);
+        e.onkeydown = x => { if (x.key === 'Enter') click(+e.dataset.i); };
+    });
+    return () => { found = true; };
 }
 
-// ================================================================
-// PUZZLE 5: ROTATE PUZZLE
-// ================================================================
-function initPuzzle5(area) {
-    var grid=document.createElement('div'); grid.className='rotate-grid'; area.appendChild(grid);
-    var pos=[{bgX:'0%',bgY:'0%'},{bgX:'100%',bgY:'0%'},{bgX:'0%',bgY:'100%'},{bgX:'100%',bgY:'100%'}];
-    var pieces=[], rots=[];
-    do{rots=[];for(var r=0;r<4;r++)rots.push(randInt(1,3));}while(false);
-    for(var i=0;i<4;i++){var p=document.createElement('div');p.className='rotate-piece';p.style.backgroundImage='url('+PHOTO_URLS[4]+')';p.style.backgroundPosition=pos[i].bgX+' '+pos[i].bgY;p.style.transform='rotate('+(rots[i]*90)+'deg)';p.dataset.rotation=rots[i];p.setAttribute('tabindex','0');grid.appendChild(p);pieces.push(p);}
-    function click(p){var r=(parseInt(p.dataset.rotation)+1)%4;p.dataset.rotation=r;p.style.transform='rotate('+(r*90)+'deg)';if(r===0)p.classList.add('correct-rot');else p.classList.remove('correct-rot');var ok=true;for(var j=0;j<pieces.length;j++)if(parseInt(pieces[j].dataset.rotation)!==0)ok=false;if(ok)setTimeout(function(){completePuzzle(4);},600);}
-    for(var pi=0;pi<pieces.length;pi++){(function(el){el.onclick=function(){click(el);};el.onkeydown=function(e){if(e.key==='Enter')click(el);};})(pieces[pi]);}
-    return function(){};
-}
 
-// ================================================================
-// PUZZLE 6: FIND THE HIDDEN STAR
-// ================================================================
-function initPuzzle6(area) {
-    var con=document.createElement('div'); con.className='p6-container'; area.appendChild(con);
-    var status=document.createElement('div'); status.className='p6-status'; status.textContent='Look carefully...'; area.appendChild(status);
-    var tot=45, hid=randInt(0,tot-1), wrong=0, found=false, els=[];
-    for(var i=0;i<tot;i++){var s=document.createElement('div');s.className='p6-star';var sz=(i===hid)?5:rand(3,7);s.style.width=sz+'px';s.style.height=sz+'px';s.style.left=rand(8,92)+'%';s.style.top=rand(8,92)+'%';s.style.opacity=rand(0.4,0.9);if(i===hid){s.classList.add('hidden-star');s.style.width='5px';s.style.height='5px';s.style.opacity='0.4';}s.dataset.index=i;s.setAttribute('tabindex','0');con.appendChild(s);els.push(s);}
-    function click(idx){if(found)return;if(idx===hid){found=true;els[idx].classList.add('found-star');status.textContent='You found it!';setTimeout(function(){completePuzzle(5);},800);}else{wrong++;els[idx].classList.add('wrong-click');(function(el){setTimeout(function(){el.classList.remove('wrong-click');},400);})(els[idx]);if(wrong>=5){status.textContent='Hint: Look for the one that pulses...';els[hid].classList.add('hint-active');}else{status.textContent='Not that one. Try again. ('+wrong+'/5)';}}}
-    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
-    return function(){found=true;};
-}
+/* ================================================================
+   FINAL SCENE — Fireworks, Constellation, Cinematic Message
+   ================================================================ */
+let fwRunning = false, fwList = [], fwCtx;
 
-// ================================================================
-// FINAL SCENE
-// ================================================================
-async function showFinalScene() {
-    finalHeart.classList.remove('visible'); finalText.innerHTML = ''; restartBtn.classList.remove('visible'); fireworksCanvas.classList.remove('active');
-    showScreen(finalScreen);
-    starField.intensify();
-    fireworksCanvas.classList.add('active');
-    startFireworks();
-    await sleep(800); finalHeart.classList.add('visible'); await sleep(1500);
-    createHeartBurst(window.innerWidth/2, window.innerHeight/2, 30); createConfetti(80);
-    await sleep(800);
-    var msg = 'Congratulations \u2764\uFE0F\n\nThese six photos are only a tiny part of our story.\n\nEvery laugh,\nevery conversation,\nevery little moment with you\nhas become something I treasure.\n\nThank you for being the most beautiful chapter of my life.\n\nNo matter what tomorrow brings,\nI\'ll always be grateful\nthat our paths crossed.\n\nYou make my world brighter\nin ways you\'ll never truly know.\n\nI love you more than words can ever explain.\n\n\u2764\uFE0F Forever Yours,\nYour Beloved,\nPrit \u2764\uFE0F';
-    await typewriter(finalText, msg, 32);
-    await sleep(600); restartBtn.classList.add('visible');
-}
-
-// ================================================================
-// FIREWORKS (Canvas Particles)
-// ================================================================
-var fwRunning = false, fwList = [], fwCtx;
 function startFireworks() {
-    fwRunning = true; fwList = []; fireworksCanvas.width = window.innerWidth; fireworksCanvas.height = window.innerHeight; fwCtx = fireworksCanvas.getContext('2d');
-    launchFw(); var int = setInterval(function(){ if(!fwRunning){clearInterval(int);return;} launchFw(); }, 800); animFw();
+    fwRunning = true;
+    fwList = [];
+    fireworksCanvas.width = window.innerWidth;
+    fireworksCanvas.height = window.innerHeight;
+    fwCtx = fireworksCanvas.getContext('2d');
+    launchFirework();
+    const int = setInterval(() => {
+        if (!fwRunning) { clearInterval(int); return; }
+        launchFirework();
+    }, 900);
+    animateFireworks();
 }
-function launchFw() {
-    var cols=['rgba(255,107,157,1)','rgba(255,215,0,1)','rgba(192,132,252,1)','rgba(74,222,128,1)','rgba(56,189,248,1)'];
-    var fw={x:rand(fireworksCanvas.width*0.15,fireworksCanvas.width*0.85),y:rand(fireworksCanvas.height*0.1,fireworksCanvas.height*0.5),particles:[],color:cols[randInt(0,cols.length-1)]};
-    var cnt=randInt(40,70); for(var i=0;i<cnt;i++){var a=(Math.PI*2*i)/cnt+rand(-0.1,0.1),sp=rand(1.5,5);fw.particles.push({x:fw.x,y:fw.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:rand(0.008,0.018),size:rand(1.5,3)});}
+
+function launchFirework() {
+    const cols = [
+        'rgba(255,107,157,1)', 'rgba(255,215,0,1)',
+        'rgba(192,132,252,1)', 'rgba(74,222,128,1)', 'rgba(56,189,248,1)'
+    ];
+    const fw = {
+        x: rand(fireworksCanvas.width * 0.1, fireworksCanvas.width * 0.9),
+        y: rand(fireworksCanvas.height * 0.1, fireworksCanvas.height * 0.4),
+        particles: [],
+        color: cols[randInt(0, cols.length - 1)]
+    };
+    const pCount = randInt(40, 70);
+    for (let i = 0; i < pCount; i++) {
+        const angle = (Math.PI * 2 * i) / pCount + rand(-0.1, 0.1);
+        const speed = rand(1.5, 5);
+        fw.particles.push({
+            x: fw.x, y: fw.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            decay: rand(0.008, 0.018),
+            size: rand(1.5, 3)
+        });
+    }
     fwList.push(fw);
 }
-function animFw() {
-    if(!fwRunning){if(fwCtx)fwCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height);return;}
-    fwCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height);
-    for(var f=fwList.length-1;f>=0;f--){var fw=fwList[f];for(var p=fw.particles.length-1;p>=0;p--){var pt=fw.particles[p];pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=0.04;pt.vx*=0.99;pt.life-=pt.decay;if(pt.life<=0){fw.particles.splice(p,1);continue;}var al=Math.max(0,pt.life);fwCtx.beginPath();fwCtx.arc(pt.x,pt.y,Math.max(0.5,pt.size*pt.life),0,Math.PI*2);fwCtx.fillStyle=fw.color.replace(',1)',','+al+')');fwCtx.fill();fwCtx.beginPath();fwCtx.arc(pt.x,pt.y,Math.max(0.5,pt.size*3*pt.life),0,Math.PI*2);fwCtx.fillStyle=fw.color.replace(',1)',','+(al*0.15)+')');fwCtx.fill();}if(fw.particles.length===0)fwList.splice(f,1);}
-    requestAnimationFrame(animFw);
+
+function animateFireworks() {
+    if (!fwRunning) {
+        if (fwCtx) fwCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+        return;
+    }
+    fwCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+
+    for (let f = fwList.length - 1; f >= 0; f--) {
+        const fw = fwList[f];
+        for (let p = fw.particles.length - 1; p >= 0; p--) {
+            const pt = fw.particles[p];
+            pt.x += pt.vx;
+            pt.y += pt.vy;
+            pt.vy += 0.04;   // Gravity
+            pt.vx *= 0.99;    // Air resistance
+            pt.life -= pt.decay;
+
+            if (pt.life <= 0) { fw.particles.splice(p, 1); continue; }
+
+            const al = Math.max(0, pt.life);
+            // Core dot
+            fwCtx.beginPath();
+            fwCtx.arc(pt.x, pt.y, Math.max(0.5, pt.size * pt.life), 0, Math.PI * 2);
+            fwCtx.fillStyle = fw.color.replace(',1)', ',' + al + ')');
+            fwCtx.fill();
+            // Glow
+            fwCtx.beginPath();
+            fwCtx.arc(pt.x, pt.y, Math.max(0.5, pt.size * 3 * pt.life), 0, Math.PI * 2);
+            fwCtx.fillStyle = fw.color.replace(',1)', ',' + (al * 0.15) + ')');
+            fwCtx.fill();
+        }
+        if (fw.particles.length === 0) fwList.splice(f, 1);
+    }
+    requestAnimationFrame(animateFireworks);
 }
 
-// ===== RESTART =====
-restartBtn.addEventListener('click', function() {
-    typewriterAbort = true; fwRunning = false; fireworksCanvas.classList.remove('active'); fwList = [];
-    progress = [false, false, false, false, false, false]; saveProgress();
-    starField.intensified = false; starField.createStars(200);
-    showScreen(loadingScreen); loadingFill.style.width = '0%'; loadingTap.classList.remove('visible');
-    setTimeout(async function() { await runLoading(); }, 300);
+
+// ===== FINAL CINEMATIC SCENE =====
+async function showFinalScene() {
+    finalHeart.classList.remove('visible');
+    finalText.innerHTML = '';
+    restartBtn.classList.remove('visible');
+    fireworksCanvas.classList.remove('active');
+    showScreen(finalScreen);
+
+    // Intensify the galaxy
+    starField.intensify();
+
+    // Start fireworks
+    fireworksCanvas.classList.add('active');
+    startFireworks();
+
+    await sleep(800);
+    finalHeart.classList.add('visible');
+    await sleep(1500);
+    createHeartBurst(window.innerWidth / 2, window.innerHeight / 2, 40);
+    createConfetti(100);
+
+    await sleep(800);
+
+    // The final typewriter message
+    const msg =
+        'Congratulations \u2764\uFE0F\n\n' +
+        'These six photos are only a tiny part of our story.\n\n' +
+        'Every laugh,\nevery conversation,\nevery little moment with you\nhas become something I treasure.\n\n' +
+        'Thank you for being the most beautiful chapter of my life.\n\n' +
+        'No matter what tomorrow brings,\nI\'ll always be grateful\nthat our paths crossed.\n\n' +
+        'You make my world brighter\nin ways you\'ll never truly know.\n\n' +
+        'I love you more than words can ever explain.\n\n' +
+        '\u2764\uFE0F Forever Yours,\nYour Beloved,\nPrit \u2764\uFE0F';
+
+    await typewriter(finalText, msg, 30);
+    await sleep(600);
+    restartBtn.classList.add('visible');
+}
+
+
+// ===== RESTART LOGIC =====
+restartBtn.addEventListener('click', () => {
+    typewriterAbort = true;
+    fwRunning = false;
+    fireworksCanvas.classList.remove('active');
+    fwList = [];
+
+    // Reset only this website's progress
+    progress = [false, false, false, false, false, false];
+    saveProgress();
+
+    starField.intensified = false;
+    starField.createStars(250);
+
+    showScreen(loadingScreen);
+    loadingFill.style.width = '0%';
+    loadingTap.classList.remove('visible');
+
+    setTimeout(async () => {
+        await runLoading();
+
+        function enterSiteRestart() {
+            loadingScreen.removeEventListener('click', enterSiteRestart);
+            loadingScreen.removeEventListener('touchend', enterSiteRestart);
+            buildHomeScreen();
+            showScreen(homeScreen);
+        }
+        loadingScreen.addEventListener('click', enterSiteRestart);
+        loadingScreen.addEventListener('touchend', enterSiteRestart);
+    }, 300);
 });
 
-window.addEventListener('resize', function() { if(fwRunning){fireworksCanvas.width=window.innerWidth;fireworksCanvas.height=window.innerHeight;} });
+// Keep fireworks canvas sized correctly on resize
+window.addEventListener('resize', () => {
+    if (fwRunning) {
+        fireworksCanvas.width = window.innerWidth;
+        fireworksCanvas.height = window.innerHeight;
+    }
+});
+
 
 // ===== INITIALIZATION =====
 async function init() {
     loadProgress();
     starField = new StarField(starCanvas);
-    initCursorGlow();
-    startFloatingHearts();
-    
-    // Run loading animation
+    initCursorAndParallax();
+
     await runLoading();
-    
-    // Wait for user to click to enter (Required for Web Audio API)
+
+    // First interaction: unlock Web Audio, start music, enter home
     function enterSite() {
         loadingScreen.removeEventListener('click', enterSite);
         loadingScreen.removeEventListener('touchend', enterSite);
-        
-        // Start Fairytale Music
-        fairytaleMusic.start();
+
+        // Start the procedural music and unmute
+        AudioSystem.start();
+        AudioSystem.toggleMute();
         musicIcon.className = 'fas fa-volume-high';
         musicBtn.classList.add('visible', 'playing');
-        
+
         buildHomeScreen();
         showScreen(homeScreen);
     }
+
     loadingScreen.addEventListener('click', enterSite);
     loadingScreen.addEventListener('touchend', enterSite);
 }
 
+// Launch the application
 init();
