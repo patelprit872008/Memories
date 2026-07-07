@@ -119,10 +119,53 @@ h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
     position: relative;
 }
 
+/* ===== MUSIC BUTTON ===== */
+.music-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-dim);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.music-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.music-btn:hover {
+    background: rgba(255, 107, 157, 0.15);
+    border-color: var(--accent-rose);
+    color: var(--accent-rose);
+}
+.music-btn.playing {
+    animation: musicPulse 2s ease-in-out infinite;
+    color: var(--accent-rose);
+    border-color: rgba(255, 107, 157, 0.3);
+}
+@keyframes musicPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 157, 0.2); }
+    50% { box-shadow: 0 0 0 10px rgba(255, 107, 157, 0); }
+}
+
 /* ===== LOADING SCREEN ===== */
 #loading-screen {
     z-index: 100;
     background: var(--bg-deep);
+    cursor: pointer;
 }
 .loading-text {
     font-family: 'Playfair Display', serif;
@@ -169,6 +212,16 @@ h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
     0%, 100% { opacity: 0.2; }
     50% { opacity: 1; }
 }
+.loading-tap {
+    margin-top: 30px;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    animation: loadPulse 2.5s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+.loading-tap.visible { opacity: 1; }
 
 /* ===== HOME SCREEN ===== */
 .home-title {
