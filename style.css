@@ -1,0 +1,700 @@
+/* =============================================
+   OUR GALAXY OF MEMORIES — Stylesheet
+   ============================================= */
+
+/* --- Custom Properties --- */
+:root {
+    --gold: #ffd700;
+    --gold-soft: #ffecb3;
+    --gold-dim: rgba(255, 215, 0, 0.4);
+    --rose: #ff6b9d;
+    --rose-deep: #c2185b;
+    --purple: #9c27b0;
+    --purple-dim: rgba(156, 39, 176, 0.3);
+    --blue-soft: #4fc3f7;
+    --text: #f0e6ff;
+    --text-muted: rgba(240, 230, 255, 0.55);
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-shadow: rgba(0, 0, 0, 0.4);
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Cormorant Garamond', serif;
+}
+
+/* --- Reset --- */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+}
+img { display: block; max-width: 100%; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; color: inherit; }
+
+/* --- Background Canvas --- */
+#starCanvas {
+    position: fixed; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* --- Nebula Overlay --- */
+#nebula {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background:
+        radial-gradient(ellipse at 15% 45%, rgba(26, 5, 51, 0.7) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(75, 0, 100, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 85%, rgba(100, 0, 60, 0.2) 0%, transparent 55%),
+        radial-gradient(ellipse at 60% 30%, rgba(0, 50, 100, 0.15) 0%, transparent 45%);
+    transition: background 1.5s ease;
+}
+body.final-active #nebula {
+    background:
+        radial-gradient(ellipse at 15% 45%, rgba(60, 10, 100, 0.8) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150, 0, 180, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 85%, rgba(200, 0, 100, 0.3) 0%, transparent 55%),
+        radial-gradient(ellipse at 60% 30%, rgba(0, 100, 200, 0.25) 0%, transparent 45%);
+}
+
+/* --- Cursor Glow --- */
+#cursorGlow {
+    position: fixed;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 3;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.3s;
+    will-change: left, top;
+}
+
+/* --- Confetti Canvas --- */
+#confettiCanvas {
+    position: fixed; inset: 0; z-index: 100;
+    pointer-events: none;
+}
+
+/* --- Screens --- */
+.screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.9s ease;
+    z-index: 10;
+}
+.screen.active { opacity: 1; pointer-events: auto; }
+.screen.overlay { z-index: 50; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+
+/* --- Glass Card --- */
+.glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* =========================
+   LOADING SCREEN
+   ========================= */
+.loading-content {
+    display: flex; flex-direction: column; align-items: center; gap: 2rem;
+}
+.loading-orbit {
+    position: relative;
+    width: 100px; height: 100px;
+    animation: orbit-spin 3s linear infinite;
+}
+.orbit-center {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.8rem; color: var(--gold);
+    text-shadow: 0 0 20px var(--gold);
+}
+.orbit-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--gold);
+    top: 50%; left: 50%;
+}
+.orbit-dot:nth-child(1) { animation: orbit-pos 3s linear infinite; }
+.orbit-dot:nth-child(2) { animation: orbit-pos 3s linear infinite -1s; }
+.orbit-dot:nth-child(3) { animation: orbit-pos 3s linear infinite -2s; }
+
+.loading-text {
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    color: var(--gold-soft);
+    letter-spacing: 0.15em;
+    animation: text-pulse 2s ease-in-out infinite;
+}
+.loading-bar {
+    width: min(280px, 70vw); height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px; overflow: hidden;
+}
+.loading-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--purple), var(--gold));
+    border-radius: 4px;
+    transition: width 0.25s ease;
+}
+
+/* =========================
+   GALAXY SCREEN
+   ========================= */
+.galaxy-content {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 1.5rem;
+    padding: 2rem 1rem;
+    width: 100%;
+}
+.galaxy-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 5vw, 3rem);
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.4), 0 0 80px rgba(255, 215, 0, 0.15);
+    letter-spacing: 0.05em;
+    animation: title-float 6s ease-in-out infinite;
+}
+.galaxy-subtitle {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    color: var(--text-muted);
+    max-width: 500px;
+    font-style: italic;
+    font-weight: 300;
+}
+
+/* --- Galaxy Stars --- */
+.stars-container {
+    position: relative;
+    width: min(500px, 90vw);
+    height: min(400px, 55vh);
+    margin: 1rem 0;
+}
+.galaxy-star {
+    position: absolute;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    color: var(--gold);
+    text-shadow: 0 0 15px var(--gold), 0 0 35px rgba(255, 165, 0, 0.5), 0 0 70px rgba(255, 165, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.3s ease, text-shadow 0.3s ease;
+    animation: star-pulse 3s ease-in-out infinite, star-float 7s ease-in-out infinite;
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+}
+.galaxy-star:hover, .galaxy-star:focus-visible {
+    transform: scale(1.35);
+    text-shadow: 0 0 25px var(--gold), 0 0 50px rgba(255, 165, 0, 0.7), 0 0 100px rgba(255, 165, 0, 0.4);
+}
+.galaxy-star:focus-visible {
+    outline: 2px solid var(--gold-soft);
+    outline-offset: 8px;
+    border-radius: 4px;
+}
+.galaxy-star.unlocked {
+    color: var(--rose);
+    text-shadow: 0 0 15px var(--rose), 0 0 35px rgba(255, 107, 157, 0.5), 0 0 70px rgba(255, 107, 157, 0.2);
+}
+.galaxy-star.unlocked::after {
+    content: '♥';
+    position: absolute;
+    font-size: 0.5em;
+    bottom: -18px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--rose);
+}
+#galaxyScreen.complete .galaxy-star {
+    animation: star-pulse-fast 1.2s ease-in-out infinite, star-float 7s ease-in-out infinite;
+    text-shadow: 0 0 25px var(--gold), 0 0 50px rgba(255, 165, 0, 0.7), 0 0 100px rgba(255, 165, 0, 0.4);
+}
+#galaxyScreen.complete .galaxy-star.unlocked {
+    text-shadow: 0 0 25px var(--rose), 0 0 50px rgba(255, 107, 157, 0.7), 0 0 100px rgba(255, 107, 157, 0.4);
+}
+
+/* --- Progress Indicator --- */
+.progress-indicator {
+    font-family: var(--font-display);
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    padding: 0.6rem 1.5rem;
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    border-radius: 30px;
+    background: rgba(255, 215, 0, 0.04);
+}
+.progress-indicator span { color: var(--gold); font-weight: 700; }
+
+/* =========================
+   PUZZLE MODAL
+   ========================= */
+.puzzle-content {
+    width: min(460px, 92vw);
+    padding: 2rem 1.8rem 1.8rem;
+    position: relative;
+    animation: modal-in 0.4s ease;
+}
+.puzzle-close {
+    position: absolute; top: 12px; right: 16px;
+    font-size: 1.8rem; color: var(--text-muted);
+    transition: color 0.2s, transform 0.2s;
+    line-height: 1;
+    z-index: 5;
+}
+.puzzle-close:hover { color: var(--rose); transform: scale(1.2); }
+.puzzle-close:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
+.puzzle-title {
+    font-family: var(--font-display);
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+    text-align: center;
+}
+.puzzle-instruction {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 1.2rem;
+    font-style: italic;
+}
+.puzzle-area {
+    width: 100%;
+    min-height: 220px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* --- Puzzle 1: Constellation --- */
+.pz1-star {
+    position: absolute;
+    font-size: 1.3rem;
+    color: var(--gold);
+    text-shadow: 0 0 10px var(--gold);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+.pz1-target {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 2px dashed var(--gold-dim);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: target-pulse 1.5s ease-in-out infinite;
+}
+.pz1-drag {
+    position: absolute;
+    font-size: 1.5rem;
+    color: var(--gold);
+    text-shadow: 0 0 15px var(--gold), 0 0 30px rgba(255, 165, 0, 0.5);
+    cursor: grab;
+    touch-action: none;
+    z-index: 10;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.15s;
+}
+.pz1-drag.dragging { cursor: grabbing; transform: scale(1.3); }
+
+/* --- Puzzle 2: Swap Pieces --- */
+.pz2-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    width: min(280px, 70vw);
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+}
+.pz2-piece {
+    background-size: 200% 200%;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+    border: 2px solid transparent;
+}
+.pz2-piece:hover { filter: brightness(1.15); }
+.pz2-piece.selected {
+    border-color: var(--gold);
+    box-shadow: 0 0 15px var(--gold-dim);
+    transform: scale(0.95);
+}
+.pz2-piece.correct { border-color: rgba(0, 255, 100, 0.4); }
+
+/* --- Puzzle 3: Sequence --- */
+.pz3-row {
+    display: flex; gap: clamp(12px, 3vw, 24px);
+    justify-content: center;
+}
+.pz3-star {
+    width: clamp(50px, 12vw, 70px);
+    height: clamp(50px, 12vw, 70px);
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+}
+.pz3-star:hover { transform: scale(1.08); }
+.pz3-star.flash {
+    transform: scale(1.2);
+    box-shadow: 0 0 25px currentColor;
+}
+.pz3-star:active { transform: scale(0.92); }
+
+/* --- Puzzle 4: Connect Stars --- */
+.pz4-star {
+    position: absolute;
+    font-size: 1.4rem;
+    color: var(--gold-soft);
+    cursor: pointer;
+    transition: transform 0.2s, color 0.2s, text-shadow 0.2s;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+}
+.pz4-star .pz4-num {
+    position: absolute;
+    top: -18px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-family: var(--font-display);
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+.pz4-star.connected {
+    color: var(--gold);
+    text-shadow: 0 0 12px var(--gold);
+}
+.pz4-star.wrong { animation: shake 0.4s ease; color: var(--rose); }
+
+/* --- Puzzle 5: Rotate --- */
+.pz5-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    width: min(280px, 70vw);
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+}
+.pz5-piece {
+    background-size: 200% 200%;
+    cursor: pointer;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
+}
+.pz5-piece:hover { filter: brightness(1.15); }
+.pz5-piece:active { filter: brightness(0.9); }
+
+/* --- Puzzle 6: Find Star --- */
+.pz6-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: clamp(8px, 2vw, 16px);
+    width: min(300px, 75vw);
+}
+.pz6-star {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: transform 0.2s, color 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.pz6-star:hover { transform: scale(1.1); color: rgba(255, 255, 255, 0.5); }
+.pz6-star.hidden-star {
+    color: var(--gold);
+    text-shadow: 0 0 12px var(--gold), 0 0 25px rgba(255, 215, 0, 0.3);
+    animation: hidden-glow 2s ease-in-out infinite;
+}
+.pz6-star.wrong-pick { animation: pz6-shake 0.4s ease; color: var(--rose); }
+
+/* =========================
+   MEMORY SCREEN
+   ========================= */
+.hearts-container {
+    position: fixed; inset: 0; z-index: 11;
+    pointer-events: none; overflow: hidden;
+}
+.floating-heart {
+    position: absolute;
+    bottom: -30px;
+    color: var(--rose);
+    pointer-events: none;
+    animation: float-up linear forwards;
+    opacity: 0;
+}
+.memory-content {
+    z-index: 12;
+    width: min(480px, 92vw);
+    animation: fade-up 0.8s ease;
+}
+.memory-card {
+    padding: 1.8rem;
+    display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
+}
+.memory-image-wrap {
+    width: 100%;
+    max-height: 45vh;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.12);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(156, 39, 176, 0.08));
+    display: flex; align-items: center; justify-content: center;
+    min-height: 180px;
+}
+.memory-image-wrap img {
+    width: 100%; height: auto;
+    max-height: 45vh;
+    object-fit: cover;
+}
+.memory-image-wrap.img-fallback::after {
+    content: '📷';
+    font-size: 3rem;
+    opacity: 0.4;
+}
+.memory-text {
+    font-size: clamp(1.1rem, 2.8vw, 1.4rem);
+    font-style: italic;
+    font-weight: 300;
+    text-align: center;
+    color: var(--text);
+    line-height: 1.7;
+}
+
+/* --- Glow Button --- */
+.btn-glow {
+    padding: 0.75rem 2.2rem;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    border-radius: 30px;
+    background: rgba(255, 215, 0, 0.06);
+    letter-spacing: 0.08em;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.btn-glow::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.15), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+}
+.btn-glow:hover::before { transform: translateX(100%); }
+.btn-glow:hover {
+    background: rgba(255, 215, 0, 0.12);
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+    transform: translateY(-2px);
+}
+.btn-glow:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+
+/* =========================
+   FINAL SCREEN
+   ========================= */
+#fireworksCanvas {
+    position: fixed; inset: 0; z-index: 11;
+    pointer-events: none;
+}
+.final-content {
+    z-index: 12;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 1.5rem;
+    padding: 2rem 1.5rem;
+    max-height: 100vh;
+    overflow-y: auto;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
+}
+.final-heart {
+    font-size: clamp(5rem, 15vw, 9rem);
+    opacity: 0;
+    transform: scale(0);
+    transition: all 1.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(0 0 40px rgba(255, 107, 157, 0.7)) drop-shadow(0 0 80px rgba(255, 107, 157, 0.3));
+    line-height: 1;
+}
+.final-heart.visible { opacity: 1; transform: scale(1); }
+
+.final-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 5vw, 2.8rem);
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+    animation: title-float 5s ease-in-out infinite;
+}
+.final-message {
+    padding: 2.5rem 2rem;
+    max-width: 560px;
+    width: min(560px, 92vw);
+    animation: fade-up 1.2s ease 0.5s both;
+}
+.final-message p {
+    margin-bottom: 1rem;
+    font-size: clamp(1rem, 2.5vw, 1.15rem);
+    font-weight: 300;
+    color: var(--text);
+}
+.final-love {
+    font-style: italic;
+    color: var(--rose) !important;
+    font-weight: 400 !important;
+    text-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
+}
+.final-signature {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.final-signature p {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+.signature-name { font-size: 1.1rem !important; color: var(--gold-soft) !important; }
+.signature-prit {
+    font-size: 1.4rem !important;
+    color: var(--rose) !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 20px rgba(255, 107, 157, 0.4);
+    margin-bottom: 0 !important;
+}
+
+/* =========================
+   MUSIC BUTTON
+   ========================= */
+.music-btn {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    z-index: 200;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px var(--glass-shadow);
+}
+.music-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+.music-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.music-btn.playing {
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.15), 0 4px 15px var(--glass-shadow);
+}
+
+/* =========================
+   KEYFRAME ANIMATIONS
+   ========================= */
+@keyframes orbit-spin { to { transform: rotate(360deg); } }
+@keyframes orbit-pos {
+    0%   { transform: translate(-50%, -50%) rotate(0deg) translateX(40px) scale(1); }
+    50%  { transform: translate(-50%, -50%) rotate(180deg) translateX(40px) scale(0.6); }
+    100% { transform: translate(-50%, -50%) rotate(360deg) translateX(40px) scale(1); }
+}
+@keyframes text-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+@keyframes star-pulse {
+    0%, 100% { opacity: 0.8; filter: brightness(1); }
+    50% { opacity: 1; filter: brightness(1.3); }
+}
+@keyframes star-pulse-fast {
+    0%, 100% { opacity: 0.85; filter: brightness(1); transform: scale(1); }
+    50% { opacity: 1; filter: brightness(1.5); transform: scale(1.08); }
+}
+@keyframes star-float {
+    0%, 100% { translate: 0 0; }
+    25% { translate: 5px -8px; }
+    50% { translate: -3px -12px; }
+    75% { translate: -6px -4px; }
+}
+@keyframes target-pulse {
+    0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.2); }
+}
+@keyframes modal-in {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes title-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+@keyframes float-up {
+    0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.7; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(-110vh) translateX(30px) rotate(360deg); opacity: 0; }
+}
+@keyframes hidden-glow {
+    0%, 100% { text-shadow: 0 0 10px var(--gold), 0 0 20px rgba(255, 215, 0, 0.2); }
+    50% { text-shadow: 0 0 18px var(--gold), 0 0 35px rgba(255, 215, 0, 0.4); }
+}
+@keyframes shake {
+    0%, 100% { transform: translate(-50%, -50%) translateX(0); }
+    20% { transform: translate(-50%, -50%) translateX(-6px); }
+    40% { transform: translate(-50%, -50%) translateX(6px); }
+    60% { transform: translate(-50%, -50%) translateX(-4px); }
+    80% { transform: translate(-50%, -50%) translateX(4px); }
+}
+@keyframes pz6-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width: 600px) {
+    .puzzle-content { padding: 1.5rem 1.2rem 1.2rem; }
+    .memory-card { padding: 1.2rem; }
+    .final-message { padding: 1.8rem 1.3rem; }
+    .stars-container { height: min(350px, 50vh); }
+    .pz4-star .pz4-num { font-size: 0.55rem; top: -15px; }
+}
+@media (max-height: 600px) {
+    .stars-container { height: min(250px, 40vh); }
+    .galaxy-title { margin-top: -1rem; }
+    .final-heart { font-size: 4rem; }
+}
+
+/* =========================
+   ACCESSIBILITY
+   ========================= */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}

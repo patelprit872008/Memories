@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Our Galaxy of Memories ✨</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Animated Star Background -->
+    <canvas id="starCanvas" aria-hidden="true"></canvas>
+
+    <!-- Nebula CSS Overlay -->
+    <div id="nebula" aria-hidden="true"></div>
+
+    <!-- Cursor Glow (desktop only) -->
+    <div id="cursorGlow" aria-hidden="true"></div>
+
+    <!-- Confetti Overlay Canvas -->
+    <canvas id="confettiCanvas" aria-hidden="true"></canvas>
+
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loadingScreen" class="screen active" role="status" aria-label="Loading">
+        <div class="loading-content">
+            <div class="loading-orbit">
+                <div class="orbit-dot"></div>
+                <div class="orbit-dot"></div>
+                <div class="orbit-dot"></div>
+                <div class="orbit-center">✦</div>
+            </div>
+            <h2 class="loading-text">Loading Our Universe...</h2>
+            <div class="loading-bar"><div class="loading-fill"></div></div>
+        </div>
+    </div>
+
+    <!-- ===== MAIN GALAXY SCREEN ===== -->
+    <div id="galaxyScreen" class="screen" role="main">
+        <div class="galaxy-content">
+            <h1 class="galaxy-title">Our Galaxy of Memories ✨</h1>
+            <p class="galaxy-subtitle">Every star hides a memory of us. Find them all.</p>
+            <div id="starsContainer" class="stars-container" role="group" aria-label="Memory stars"></div>
+            <div class="progress-indicator">
+                Memories Unlocked: <span id="progressCount">0</span>/6
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PUZZLE MODAL (overlay) ===== -->
+    <div id="puzzleModal" class="screen overlay" role="dialog" aria-modal="true" aria-label="Puzzle">
+        <div class="puzzle-content glass-card">
+            <button id="puzzleCloseBtn" class="puzzle-close" aria-label="Close puzzle">&times;</button>
+            <h3 id="puzzleTitle" class="puzzle-title"></h3>
+            <p id="puzzleInstruction" class="puzzle-instruction"></p>
+            <div id="puzzleArea" class="puzzle-area"></div>
+        </div>
+    </div>
+
+    <!-- ===== MEMORY REVEAL SCREEN ===== -->
+    <div id="memoryScreen" class="screen">
+        <div id="heartsContainer" class="hearts-container" aria-hidden="true"></div>
+        <div class="memory-content">
+            <div class="memory-card glass-card">
+                <div class="memory-image-wrap">
+                    <img id="memoryImage" src="./assets/photo1.jpg" alt="Our memory" onerror="this.style.display='none';this.parentElement.classList.add('img-fallback')">
+                </div>
+                <p id="memoryText" class="memory-text"></p>
+                <button id="memoryNextBtn" class="btn-glow">Continue ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FINAL SCREEN ===== -->
+    <div id="finalScreen" class="screen">
+        <canvas id="fireworksCanvas" aria-hidden="true"></canvas>
+        <div id="finalHeartsContainer" class="hearts-container" aria-hidden="true"></div>
+        <div class="final-content">
+            <div id="finalHeart" class="final-heart" aria-hidden="true">❤</div>
+            <h1 class="final-title">Congratulations! ❤️</h1>
+            <div class="final-message glass-card">
+                <p>These six photos are only a tiny part of our story.</p>
+                <p>Every laugh, every conversation, and every little moment with you has become something I treasure.</p>
+                <p>Thank you for being the most beautiful chapter of my life.</p>
+                <p>No matter what tomorrow brings, I'll always be grateful that our paths crossed.</p>
+                <p>You make my world brighter in ways you'll never truly know.</p>
+                <p class="final-love">I love you more than words can ever explain.</p>
+                <div class="final-signature">
+                    <p>Forever Yours,</p>
+                    <p class="signature-name">Your Beloved,</p>
+                    <p class="signature-prit">Prit ❤️</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Music Toggle -->
+    <button id="musicBtn" class="music-btn" aria-label="Toggle Fairytale music">🔇</button>
+
+    <script src="script.js"></script>
+</body>
+</html>
