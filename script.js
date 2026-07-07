@@ -609,23 +609,25 @@ async function showReveal(i) {
     revealPhoto.style.aspectRatio = '';
     revealPhoto.style.maxHeight = '';
     revealPhoto.style.width = '';
+    revealPhoto.style.objectPosition = '';
     revealPhotoWrap.classList.remove('p6-special');
 
     revealPhoto.src = PHOTO_URLS[i];
     showScreen(revealScreen);
 
-    // Puzzle 6: STRICT no-crop protection for the face
+    // Puzzle 6: Crop the face out of the photo
     if (i === 5) {
         revealPhotoWrap.classList.add('p6-special');
-        // Absolute fallback inline styles as safety net
+        // Crop the image to hide the face - show only lower/body portion
         revealPhotoWrap.style.padding = '10px';
         revealPhotoWrap.style.background = '#000';
         revealPhotoWrap.style.border = '2px solid rgba(255,215,0,0.5)';
         revealPhotoWrap.style.boxShadow = '0 0 40px rgba(255,107,157,0.4), 0 0 80px rgba(255,215,0,0.1)';
-        revealPhoto.style.objectFit = 'contain';
+        revealPhoto.style.objectFit = 'cover';
         revealPhoto.style.aspectRatio = 'auto';
         revealPhoto.style.maxHeight = '65vh';
         revealPhoto.style.width = '100%';
+        revealPhoto.style.objectPosition = 'center bottom';  // Crops face, shows lower portion
     }
 
     await sleep(400);
