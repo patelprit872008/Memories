@@ -27,13 +27,19 @@
     <!-- Effects container -->
     <div id="effects-container"></div>
 
-    <!-- LOADING SCREEN -->
+    <!-- Music toggle button -->
+    <button class="music-btn" id="music-btn" aria-label="Toggle music">
+        <i class="fas fa-volume-xmark" id="music-icon"></i>
+    </button>
+
+    <!-- LOADING SCREEN (Click to enter and start music) -->
     <div id="loading-screen" class="screen active">
         <div class="loading-stars" id="loading-stars"></div>
         <div class="loading-text">Loading Our Universe...</div>
         <div class="loading-bar">
             <div class="loading-bar-fill" id="loading-bar-fill"></div>
         </div>
+        <div class="loading-tap" id="loading-tap">Tap anywhere to enter</div>
     </div>
 
     <!-- HOME SCREEN -->
