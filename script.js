@@ -1,727 +1,917 @@
-/* =============================================
-   OUR GALAXY OF MEMORIES — Main Script
-   Includes: Fairytale Synth (Web Audio API)
-   ============================================= */
+/* ================================================================
+   MEMORIES — Main Script
+   
+   NO MP3 NEEDED! 
+   This file contains a beautiful procedural "Fairytale" melody
+   generated using the Web Audio API. Just add your photos!
+   ================================================================ */
 
-// ===== NOTE FREQUENCY MAP =====
-const NOTES = {
-    'C2':65.41,'D2':73.42,'E2':82.41,'F2':87.31,'G2':98.00,'A2':110.00,'B2':123.47,
-    'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'G3':196.00,'A3':220.00,'B3':246.94,
-    'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'G4':392.00,'A4':440.00,'B4':493.88,
-    'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99,'A5':880.00,'B5':987.77,
-    'C6':1046.50,'D6':1174.66,'E6':1318.51
-};
+// ===== PHOTO URLS (Your local photos) =====
+var PHOTO_URLS = [
+    'assets/photo1.jpg',
+    'assets/photo2.jpg',
+    'assets/photo3.jpg',
+    'assets/photo4.jpg',
+    'assets/photo5.jpg',
+    'assets/photo6.jpg'
+];
 
-// ===== FAIRYTALE SYNTHESIZER =====
-// Generates a dreamy music-box fairytale melody using Web Audio API
-// No external audio file needed
-class FairytaleSynth {
-    constructor() {
-        this.ctx = null;
-        this.masterGain = null;
-        this.playing = false;
-        this.muted = true;
-        this.timeoutIds = [];
-        this.loopTimeout = null;
+// ===== MESSAGES FOR EACH PUZZLE =====
+var MESSAGES = [
+    "Every beautiful story starts with a single moment.\nOurs started with you.",
+    "Every smile of yours became one of my favorite memories.",
+    "No matter where life takes us,\nmy heart always finds its way back to you.",
+    "You turned ordinary days into unforgettable memories.",
+    "If I had to choose again,\nI would still choose you.",
+    "You are my favorite place,\nmy safest feeling,\nand my happiest adventure."
+];
 
-        // Fairytale melody — dreamy, music-box style in C major
-        this.melody = [
-            // Phrase 1: Ascending dream (Once upon a time...)
-            {n:'E5',d:0.38},{n:'G5',d:0.38},{n:'C6',d:0.55},{n:'B5',d:0.32},
-            {n:'A5',d:0.38},{n:'G5',d:0.38},{n:'E5',d:0.55},{n:'D5',d:0.32},
-            // Phrase 2: Gentle descent
-            {n:'C5',d:0.38},{n:'E5',d:0.38},{n:'G5',d:0.55},{n:'A5',d:0.32},
-            {n:'G5',d:0.38},{n:'E5',d:0.38},{n:'D5',d:0.55},{n:'C5',d:0.32},
-            // Phrase 3: Emotional peak
-            {n:'E5',d:0.30},{n:'G5',d:0.30},{n:'A5',d:0.30},{n:'B5',d:0.30},
-            {n:'C6',d:0.65},{n:'A5',d:0.30},{n:'G5',d:0.38},{n:'E5',d:0.38},
-            // Phrase 4: Tender resolution
-            {n:'D5',d:0.42},{n:'C5',d:0.42},{n:'B4',d:0.35},{n:'C5',d:0.90},
-            // Rest to breathe
-            {n:null,d:0.5},{n:null,d:0.5},
-            // Phrase 5: Second verse — warmth
-            {n:'A4',d:0.35},{n:'C5',d:0.35},{n:'E5',d:0.55},{n:'D5',d:0.30},
-            {n:'C5',d:0.38},{n:'A4',d:0.38},{n:'G4',d:0.55},{n:'A4',d:0.30},
-            // Phrase 6: Rising hope
-            {n:'C5',d:0.35},{n:'D5',d:0.35},{n:'E5',d:0.55},{n:'G5',d:0.30},
-            {n:'A5',d:0.38},{n:'G5',d:0.38},{n:'E5',d:0.55},{n:'D5',d:0.30},
-            // Phrase 7: Bridge — delicate
-            {n:'F5',d:0.32},{n:'E5',d:0.32},{n:'D5',d:0.50},{n:'E5',d:0.30},
-            {n:'G5',d:0.38},{n:'F5',d:0.38},{n:'E5',d:0.50},{n:'D5',d:0.30},
-            // Phrase 8: Final resolution
-            {n:'C5',d:0.42},{n:'E5',d:0.42},{n:'G5',d:0.42},{n:'C6',d:1.0},
-            {n:null,d:0.6},{n:null,d:0.4},
-        ];
+// ===== PUZZLE TITLES AND INSTRUCTIONS =====
+var PUZZLE_INFO = [
+    { title: 'Constellation Puzzle', instruction: 'Drag the star to complete the constellation' },
+    { title: 'Jigsaw Puzzle', instruction: 'Tap two pieces to swap them and complete the image' },
+    { title: 'Memory Sequence', instruction: 'Watch the stars glow, then repeat the sequence' },
+    { title: 'Connect the Stars', instruction: 'Click the stars in order to draw a constellation' },
+    { title: 'Rotate Puzzle', instruction: 'Tap each piece to rotate it until the image is complete' },
+    { title: 'Find the Hidden Star', instruction: 'One star is different. Find it.' }
+];
 
-        // Soft bass notes (one per phrase group)
-        this.bass = [
-            {n:'C3',d:3.0},{n:'G2',d:3.0},
-            {n:'A2',d:2.2},{n:'E3',d:2.2},
-            {n:'F2',d:2.2},{n:'C3',d:2.2},
-            {n:'G2',d:2.2},{n:'C3',d:3.0},
-        ];
+var STAR_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
-        // Gentle arpeggio accompaniment
-        this.arp = [
-            {n:'C4',d:0.75},{n:'E4',d:0.75},{n:'G4',d:0.75},{n:'E4',d:0.75},
-            {n:'G3',d:0.75},{n:'B3',d:0.75},{n:'D4',d:0.75},{n:'B3',d:0.75},
-            {n:'A3',d:0.75},{n:'C4',d:0.75},{n:'E4',d:0.75},{n:'C4',d:0.75},
-            {n:'F3',d:0.75},{n:'A3',d:0.75},{n:'C4',d:0.75},{n:'A3',d:0.75},
-            {n:'G3',d:0.75},{n:'B3',d:0.75},{n:'D4',d:0.75},{n:'B3',d:0.75},
-            {n:'C3',d:0.75},{n:'E3',d:0.75},{n:'G3',d:0.75},{n:'E3',d:0.75},
-            {n:'C4',d:0.75},{n:'E4',d:0.75},{n:'G4',d:0.75},{n:'C5',d:1.5},
-            {n:null,d:1.0},
-        ];
-    }
+// ===== APP STATE =====
+var progress = [false, false, false, false, false, false];
+var currentPuzzle = -1;
+var puzzleCleanup = null;
+var typewriterAbort = false;
 
-    _init() {
-        if (this.ctx) return;
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+// ===== DOM REFERENCES =====
+function $(id) { return document.getElementById(id); }
+var loadingScreen = $('loading-screen');
+var homeScreen = $('home-screen');
+var puzzleScreen = $('puzzle-screen');
+var revealScreen = $('reveal-screen');
+var finalScreen = $('final-screen');
+var loadingFill = $('loading-bar-fill');
+var loadingTap = $('loading-tap');
+var starsGrid = $('stars-grid');
+var progressCount = $('progress-count');
+var puzzleTitle = $('puzzle-title');
+var puzzleInstruction = $('puzzle-instruction');
+var puzzleArea = $('puzzle-area');
+var puzzleBack = $('puzzle-back');
+var revealPhotoWrap = $('reveal-photo-wrap');
+var revealPhoto = $('reveal-photo');
+var revealText = $('reveal-text');
+var revealNextBtn = $('reveal-next-btn');
+var finalHeart = $('final-heart');
+var finalText = $('final-text');
+var restartBtn = $('restart-btn');
+var cursorGlow = $('cursor-glow');
+var effectsContainer = $('effects-container');
+var fireworksCanvas = $('fireworks-canvas');
+var starCanvas = $('star-canvas');
+var musicBtn = $('music-btn');
+var musicIcon = $('music-icon');
 
-        // Master gain
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.35;
+// ===== UTILITY FUNCTIONS =====
+function sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 
-        // Soft delay for atmosphere
-        this.delay = this.ctx.createDelay(1.0);
-        this.delay.delayTime.value = 0.35;
-        this.delayFeedback = this.ctx.createGain();
-        this.delayFeedback.gain.value = 0.25;
-        this.delayWet = this.ctx.createGain();
-        this.delayWet.gain.value = 0.2;
-
-        this.delay.connect(this.delayFeedback);
-        this.delayFeedback.connect(this.delay);
-        this.delay.connect(this.delayWet);
-        this.delayWet.connect(this.masterGain);
-
-        // Dry path
-        this.dryGain = this.ctx.createGain();
-        this.dryGain.gain.value = 0.8;
-        this.dryGain.connect(this.masterGain);
-
-        this.masterGain.connect(this.ctx.destination);
-    }
-
-    // Play a single music-box note
-    _playNote(freq, startTime, duration, volume, type) {
-        if (!freq || !this.ctx) return;
-        const t = startTime;
-
-        // Fundamental
-        const osc1 = this.ctx.createOscillator();
-        osc1.type = type || 'sine';
-        osc1.frequency.value = freq;
-
-        // 2nd harmonic for warmth
-        const osc2 = this.ctx.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.value = freq * 2;
-
-        // 3rd harmonic — very subtle
-        const osc3 = this.ctx.createOscillator();
-        osc3.type = 'sine';
-        osc3.frequency.value = freq * 3;
-
-        const g1 = this.ctx.createGain();
-        const g2 = this.ctx.createGain();
-        const g3 = this.ctx.createGain();
-
-        // ADSR envelope — music box: quick attack, fast decay, low sustain
-        g1.gain.setValueAtTime(0, t);
-        g1.gain.linearRampToValueAtTime(volume, t + 0.008);
-        g1.gain.exponentialRampToValueAtTime(Math.max(volume * 0.3, 0.001), t + 0.15);
-        g1.gain.exponentialRampToValueAtTime(0.001, t + duration * 0.95);
-
-        g2.gain.setValueAtTime(0, t);
-        g2.gain.linearRampToValueAtTime(volume * 0.3, t + 0.005);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + duration * 0.6);
-
-        g3.gain.setValueAtTime(0, t);
-        g3.gain.linearRampToValueAtTime(volume * 0.1, t + 0.003);
-        g3.gain.exponentialRampToValueAtTime(0.001, t + duration * 0.4);
-
-        osc1.connect(g1); g1.connect(this.dryGain); g1.connect(this.delay);
-        osc2.connect(g2); g2.connect(this.dryGain);
-        osc3.connect(g3); g3.connect(this.dryGain);
-
-        osc1.start(t); osc1.stop(t + duration);
-        osc2.start(t); osc2.stop(t + duration);
-        osc3.start(t); osc3.stop(t + duration);
-    }
-
-    // Schedule an entire sequence
-    _scheduleSequence(seq, startTime, volume, type) {
-        let t = startTime;
-        for (const note of seq) {
-            if (note.n && NOTES[note.n]) {
-                this._playNote(NOTES[note.n], t, note.d * 1.1, volume, type);
-            }
-            t += note.d;
+// ===== LOCAL STORAGE =====
+function saveProgress() {
+    try { localStorage.setItem('memories_progress', JSON.stringify(progress)); } catch(e) {}
+}
+function loadProgress() {
+    try {
+        var saved = localStorage.getItem('memories_progress');
+        if (saved) {
+            var parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length === 6) progress = parsed;
         }
-        return t - startTime; // total duration
-    }
-
-    // Start the fairytale loop
-    start() {
-        if (this.playing) return;
-        this._init();
-        if (this.ctx.state === 'suspended') this.ctx.resume();
-        this.playing = true;
-        this.muted = false;
-        this._scheduleLoop();
-    }
-
-    _scheduleLoop() {
-        if (!this.playing) return;
-        const now = this.ctx.currentTime + 0.05;
-
-        // Schedule melody, bass, and arpeggio
-        this._scheduleSequence(this.melody, now, 0.18, 'sine');
-        this._scheduleSequence(this.bass, now, 0.08, 'triangle');
-        this._scheduleSequence(this.arp, now, 0.04, 'sine');
-
-        // Calculate total melody duration for loop timing
-        let totalDur = 0;
-        for (const n of this.melody) totalDur += n.d;
-
-        // Schedule next loop
-        this.loopTimeout = setTimeout(() => this._scheduleLoop(), totalDur * 1000 - 100);
-    }
-
-    stop() {
-        this.playing = false;
-        if (this.loopTimeout) clearTimeout(this.loopTimeout);
-        if (this.ctx) {
-            this.masterGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
-            setTimeout(() => {
-                if (this.masterGain) this.masterGain.gain.value = 0.35;
-            }, 600);
-        }
-    }
-
-    setMuted(m) {
-        this.muted = m;
-        if (!this.ctx) return;
-        if (m) {
-            this.masterGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
-        } else {
-            this.masterGain.gain.linearRampToValueAtTime(0.35, this.ctx.currentTime + 0.3);
-        }
-    }
-
-    destroy() {
-        this.stop();
-        if (this.ctx) this.ctx.close();
-        this.ctx = null;
-    }
+    } catch(e) {}
 }
 
-// ===== STATE =====
-const state = {
-    unlocked: JSON.parse(localStorage.getItem('galaxy_unlocked') || '[]'),
-    currentPuzzle: -1,
-    transitioning: false,
-    musicMuted: localStorage.getItem('galaxy_muted') !== 'false' // default muted
-};
+// ===== SCREEN MANAGEMENT =====
+function showScreen(screen) {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) {
+        screens[i].classList.remove('active');
+    }
+    screen.classList.add('active');
+}
 
-const MEMORIES = [
-    "Every beautiful story starts with a single moment. Ours started with you.",
-    "Every smile of yours became one of my favorite memories.",
-    "No matter where life takes us, my heart always finds its way back to you.",
-    "You turned ordinary days into unforgettable memories.",
-    "If I had to choose again, I would still choose you.",
-    "You are my favorite place, my safest feeling, and my happiest adventure."
-];
+/* ================================================================
+   FAIRYTALE MUSIC GENERATOR (Web Audio API)
+   A soft, romantic, music-box style melody
+   ================================================================ */
+var FairytaleMusic = (function() {
+    function FM() {
+        this.audioCtx = null;
+        this.masterGain = null;
+        this.isPlaying = false;
+        this.isMuted = false;
+        this.loopTimeout = null;
+    }
 
-const PUZZLES = [
-    { title: 'Complete the Constellation', instruction: 'Drag the star to its missing place in the constellation', init: initPuzzle1 },
-    { title: 'Piece Together the Memory', instruction: 'Tap two pieces to swap them until the picture is complete', init: initPuzzle2 },
-    { title: 'Remember the Sequence', instruction: 'Watch the stars light up, then repeat the sequence', init: initPuzzle3 },
-    { title: 'Connect the Stars', instruction: 'Tap the stars in order: 1 → 2 → 3 → 4 → 5', init: initPuzzle4 },
-    { title: 'Rotate to Reveal', instruction: 'Tap each piece to rotate it until the picture is whole', init: initPuzzle5 },
-    { title: 'Find the Hidden Star', instruction: 'One star glows differently — find it', init: initPuzzle6 }
-];
+    FM.prototype.init = function() {
+        // Initialize Audio Context (Requires user interaction first)
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterGain = this.audioCtx.createGain();
+        this.masterGain.gain.value = 0.3; // Keep it soft and romantic
+        this.masterGain.connect(this.audioCtx.destination);
+    };
 
-const STAR_POSITIONS = [
-    { x: 15, y: 22 }, { x: 78, y: 15 }, { x: 52, y: 42 },
-    { x: 20, y: 72 }, { x: 80, y: 65 }, { x: 46, y: 85 }
-];
+    // Play a single crystalline note
+    FM.prototype.playNote = function(freq, startTime, duration, type) {
+        if (!this.audioCtx || this.isMuted) return;
 
-const $ = (id) => document.getElementById(id);
-let puzzleCleanup = null;
+        var osc = this.audioCtx.createOscillator();
+        var gainNode = this.audioCtx.createGain();
+        
+        // Use sine or triangle for a soft music box feel
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
 
-// ===== STAR FIELD =====
-class StarField {
-    constructor(canvas) {
+        // Quick attack, long decay
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.02); 
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+        osc.connect(gainNode);
+        gainNode.connect(this.masterGain);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    };
+
+    // Play a soft chord
+    FM.prototype.playChord = function(freqs, startTime, duration) {
+        for (var i = 0; i < freqs.length; i++) {
+            this.playNote(freqs[i], startTime, duration, 'triangle');
+        }
+    };
+
+    // The Fairytale Melody Sequence
+    FM.prototype.playMelody = function() {
+        if (!this.isPlaying) return;
+        var now = this.audioCtx.currentTime + 0.1;
+        var bpm = 100;
+        var beat = 60 / bpm;
+
+        // A beautiful, ethereal romantic progression (Cmaj7 -> Am -> Fmaj7 -> G)
+        // Using high octave frequencies for a "music box" timbre
+        
+        // Bar 1: Cmaj7 sparkle
+        this.playNote(523.25, now, beat * 2); // C5
+        this.playNote(659.25, now + beat * 0.5, beat * 1.5); // E5
+        this.playChord([523.25, 659.25, 783.99], now, beat * 3); // Underlying chord
+
+        // Bar 2: Am dreaminess
+        this.playNote(783.99, now + beat * 2, beat * 2); // G5
+        this.playNote(659.25, now + beat * 3, beat); // E5
+        this.playChord([440.00, 523.25, 659.25], now + beat * 2, beat * 2); // Am chord
+
+        // Bar 3: Fmaj7 lift
+        this.playNote(698.46, now + beat * 4, beat * 2); // F5
+        this.playNote(523.25, now + beat * 5, beat); // C5
+        this.playChord([349.23, 440.00, 523.25], now + beat * 4, beat * 2); // Fmaj7 chord
+
+        // Bar 4: G resolution
+        this.playNote(783.99, now + beat * 6, beat); // G5
+        this.playNote(659.25, now + beat * 7, beat); // E5
+        this.playChord([392.00, 493.88, 587.33], now + beat * 6, beat * 2); // G chord
+
+        // Bar 5: High octave sparkle (C)
+        this.playNote(1046.50, now + beat * 8, beat * 1.5); // C6
+        this.playNote(783.99, now + beat * 9, beat * 0.5); // G5
+        this.playNote(659.25, now + beat * 9.5, beat * 0.5); // E5
+
+        // Bar 6: Descending dream (Am)
+        this.playNote(880.00, now + beat * 10, beat); // A5
+        this.playNote(783.99, now + beat * 11, beat); // G5
+
+        // Bar 7: Gentle landing (F)
+        this.playNote(698.46, now + beat * 12, beat * 2); // F5
+
+        // Bar 8: Final soft resolve (G to C)
+        this.playNote(587.33, now + beat * 14, beat); // D5
+        this.playNote(523.25, now + beat * 15, beat); // C5
+        this.playChord([261.63, 329.63, 392.00], now + beat * 14, beat * 2); // Cmaj underlying
+
+        // Loop the melody seamlessly
+        var self = this;
+        this.loopTimeout = setTimeout(function() {
+            self.playMelody();
+        }, (beat * 16) * 1000);
+    };
+
+    FM.prototype.start = function() {
+        if (!this.audioCtx) this.init();
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+        this.isPlaying = true;
+        this.playMelody();
+    };
+
+    FM.prototype.stop = function() {
+        this.isPlaying = false;
+        if (this.loopTimeout) clearTimeout(this.loopTimeout);
+    };
+
+    FM.prototype.toggleMute = function() {
+        this.isMuted = !this.isMuted;
+        if (this.masterGain) {
+            this.masterGain.gain.value = this.isMuted ? 0 : 0.3;
+        }
+        return this.isMuted;
+    };
+
+    return FM;
+})();
+
+var fairytaleMusic = new FairytaleMusic();
+
+// Music button click handler
+musicBtn.addEventListener('click', function(e) {
+    e.stopPropagation(); // Prevent triggering loading screen click
+    var isMuted = fairytaleMusic.toggleMute();
+    if (isMuted) {
+        musicIcon.className = 'fas fa-volume-xmark';
+        musicBtn.classList.remove('playing');
+    } else {
+        musicIcon.className = 'fas fa-volume-high';
+        musicBtn.classList.add('playing');
+    }
+});
+
+
+// ===== STAR FIELD (Canvas Rendering) =====
+var StarField = (function() {
+    function SF(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.stars = [];
         this.shootingStars = [];
-        this.boosted = false;
+        this.intensified = false;
         this.resize();
-        this.initStars();
+        this.createStars(200);
         this.animate();
-        window.addEventListener('resize', () => { this.resize(); this.initStars(); });
+        var self = this;
+        window.addEventListener('resize', function() { self.resize(); });
+        setInterval(function() { self.addShootingStar(); }, 4000);
+        setTimeout(function() { self.addShootingStar(); }, 2000);
     }
-    resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; }
-    initStars() {
-        const count = window.innerWidth < 768 ? 120 : 250;
+    SF.prototype.resize = function() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    };
+    SF.prototype.createStars = function(count) {
         this.stars = [];
-        for (let i = 0; i < count; i++) {
+        for (var i = 0; i < count; i++) {
             this.stars.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                size: Math.random() * 1.8 + 0.4,
-                phase: Math.random() * Math.PI * 2,
-                speed: Math.random() * 1.5 + 0.5
+                r: Math.random() * 1.5 + 0.3,
+                opacity: Math.random() * 0.7 + 0.2,
+                speed: Math.random() * 0.015 + 0.005,
+                phase: Math.random() * Math.PI * 2
             });
         }
-    }
-    boost() { this.boosted = true; }
-    animate() {
-        const { ctx, canvas } = this;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const t = Date.now() * 0.001;
-        const b = this.boosted ? 1.5 : 1;
-        for (const s of this.stars) {
-            const a = Math.min((0.25 + 0.75 * Math.abs(Math.sin(t * s.speed + s.phase))) * b, 1);
+    };
+    SF.prototype.intensify = function() {
+        this.intensified = true;
+        this.createStars(800);
+    };
+    SF.prototype.addShootingStar = function() {
+        var w = this.canvas.width;
+        var h = this.canvas.height;
+        this.shootingStars.push({
+            x: rand(0, w * 0.7),
+            y: rand(0, h * 0.3),
+            len: rand(60, 120),
+            speed: rand(7, 12),
+            angle: Math.PI / 4 + rand(-0.2, 0.2),
+            life: 1
+        });
+    };
+    SF.prototype.animate = function() {
+        var self = this;
+        var ctx = this.ctx;
+        var w = this.canvas.width;
+        var h = this.canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        var t = Date.now() * 0.001;
+        
+        for (var i = 0; i < this.stars.length; i++) {
+            var s = this.stars[i];
+            var tw = Math.sin(t * s.speed * 50 + s.phase);
+            var a = s.opacity * (0.5 + 0.5 * tw);
             ctx.beginPath();
-            ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255,255,255,${a})`;
+            ctx.arc(s.x, s.y, Math.max(0.1, s.r), 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,' + a + ')';
             ctx.fill();
+            if (s.r > 1.2) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, Math.max(0.1, s.r * 3), 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,' + (a * 0.08) + ')';
+                ctx.fill();
+            }
         }
-        if (Math.random() < (this.boosted ? 0.02 : 0.004)) {
-            this.shootingStars.push({
-                x: Math.random() * canvas.width * 0.8, y: Math.random() * canvas.height * 0.3,
-                len: Math.random() * 80 + 40, speed: Math.random() * 6 + 4,
-                angle: Math.PI / 4 + (Math.random() - 0.5) * 0.4, life: 1
-            });
-        }
-        this.shootingStars = this.shootingStars.filter(s => s.life > 0);
-        for (const s of this.shootingStars) {
-            s.x += Math.cos(s.angle) * s.speed;
-            s.y += Math.sin(s.angle) * s.speed;
-            s.life -= 0.018;
-            const ex = s.x - Math.cos(s.angle) * s.len;
-            const ey = s.y - Math.sin(s.angle) * s.len;
-            const grad = ctx.createLinearGradient(s.x, s.y, ex, ey);
-            grad.addColorStop(0, `rgba(255,255,255,${s.life})`);
+        
+        for (var j = this.shootingStars.length - 1; j >= 0; j--) {
+            var ss = this.shootingStars[j];
+            var dx = Math.cos(ss.angle) * ss.len;
+            var dy = Math.sin(ss.angle) * ss.len;
+            var grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - dx, ss.y - dy);
+            grad.addColorStop(0, 'rgba(255,255,255,' + ss.life + ')');
             grad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(ex, ey);
-            ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(ss.x, ss.y);
+            ctx.lineTo(ss.x - dx, ss.y - dy);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ss.x += Math.cos(ss.angle) * ss.speed;
+            ss.y += Math.sin(ss.angle) * ss.speed;
+            ss.life -= 0.015;
+            if (ss.life <= 0) this.shootingStars.splice(j, 1);
         }
-        requestAnimationFrame(() => this.animate());
-    }
-}
+        requestAnimationFrame(function() { self.animate(); });
+    };
+    return SF;
+})();
 
-// ===== CONFETTI =====
-class ConfettiSystem {
-    constructor(canvas) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.running = false; this.particles = []; }
-    launch(duration = 3000) {
-        this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight;
-        this.particles = []; this.running = true;
-        const colors = ['#ffd700','#ff6b9d','#9c27b0','#ffffff','#ff69b4','#e6e6fa','#4fc3f7'];
-        for (let i = 0; i < 150; i++) {
-            this.particles.push({
-                x: Math.random() * this.canvas.width, y: -Math.random() * this.canvas.height * 0.5 - 20,
-                w: Math.random() * 10 + 4, h: Math.random() * 6 + 2,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                vx: (Math.random() - 0.5) * 5, vy: Math.random() * 3 + 1.5,
-                rot: Math.random() * 360, rotV: (Math.random() - 0.5) * 12
-            });
-        }
-        const start = Date.now();
-        const loop = () => {
-            if (!this.running) return;
-            if (Date.now() - start > duration) { this.stop(); return; }
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            const fade = Math.max(0, 1 - (Date.now() - start) / duration);
-            for (const p of this.particles) {
-                p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.rot += p.rotV; p.vx *= 0.99;
-                this.ctx.save();
-                this.ctx.translate(p.x, p.y); this.ctx.rotate(p.rot * Math.PI / 180);
-                this.ctx.globalAlpha = fade; this.ctx.fillStyle = p.color;
-                this.ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                this.ctx.restore();
-            }
-            requestAnimationFrame(loop);
-        };
-        loop();
-    }
-    stop() { this.running = false; this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
-}
-
-// ===== FIREWORKS =====
-class FireworksSystem {
-    constructor(canvas) { this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.running = false; this.particles = []; }
-    launch(duration = 8000) {
-        this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight;
-        this.particles = []; this.running = true;
-        const colors = ['#ffd700','#ff6b9d','#9c27b0','#4fc3f7','#ff69b4','#e6e6fa'];
-        const start = Date.now(); let last = 0;
-        const loop = () => {
-            if (!this.running) return;
-            if (Date.now() - start > duration) { this.stop(); return; }
-            this.ctx.fillStyle = 'rgba(0,0,0,0.12)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            if (Date.now() - last > 400) {
-                last = Date.now();
-                const cx = Math.random() * this.canvas.width * 0.8 + this.canvas.width * 0.1;
-                const cy = Math.random() * this.canvas.height * 0.4 + 40;
-                const c = colors[Math.floor(Math.random() * colors.length)];
-                for (let i = 0; i < 55; i++) {
-                    const a = (Math.PI * 2 / 55) * i + Math.random() * 0.3;
-                    const sp = Math.random() * 3.5 + 1;
-                    this.particles.push({ x: cx, y: cy, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, size: Math.random()*2.5+0.8, color: c, life: 1 });
-                }
-            }
-            this.particles = this.particles.filter(p => p.life > 0);
-            for (const p of this.particles) {
-                p.x += p.vx; p.y += p.vy; p.vy += 0.025; p.vx *= 0.99; p.vy *= 0.99; p.life -= 0.012;
-                this.ctx.beginPath();
-                this.ctx.arc(p.x, p.y, Math.max(0.1, p.size * p.life), 0, Math.PI * 2);
-                this.ctx.fillStyle = p.color; this.ctx.globalAlpha = Math.max(0, p.life); this.ctx.fill(); this.ctx.globalAlpha = 1;
-            }
-            requestAnimationFrame(loop);
-        };
-        loop();
-    }
-    stop() { this.running = false; this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
-}
-
-// ===== SCREENS =====
-function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $(id).classList.add('active');
-}
-
-function createFloatingHearts(container, count = 25, interval = 180) {
-    for (let i = 0; i < count; i++) {
-        setTimeout(() => {
-            const h = document.createElement('div');
-            h.className = 'floating-heart';
-            h.textContent = ['❤','♥','💕','✨'][Math.floor(Math.random() * 4)];
-            h.style.left = Math.random() * 100 + '%';
-            h.style.animationDuration = (Math.random() * 4 + 4) + 's';
-            h.style.fontSize = (Math.random() * 18 + 10) + 'px';
-            container.appendChild(h);
-            setTimeout(() => h.remove(), 9000);
-        }, i * interval);
-    }
-}
-
-// ===== LOADING =====
-function initLoading() {
-    const fill = document.querySelector('.loading-fill');
-    let p = 0;
-    const iv = setInterval(() => {
-        p += Math.random() * 18 + 6;
-        if (p >= 100) { p = 100; clearInterval(iv); setTimeout(() => showScreen('galaxyScreen'), 600); }
-        fill.style.width = p + '%';
-    }, 220);
-}
-
-// ===== MUSIC (Fairytale Synth) =====
-let fairytale = null;
-function initMusic() {
-    fairytale = new FairytaleSynth();
-    const btn = $('musicBtn');
-    // Start muted by default
-    btn.textContent = '🔇';
-    btn.classList.remove('playing');
-
-    btn.addEventListener('click', () => {
-        if (fairytale.muted) {
-            // Unmute
-            fairytale.start();
-            fairytale.setMuted(false);
-            state.musicMuted = false;
-            btn.textContent = '🎵';
-            btn.classList.add('playing');
-        } else {
-            // Mute
-            fairytale.setMuted(true);
-            state.musicMuted = true;
-            btn.textContent = '🔇';
-            btn.classList.remove('playing');
-        }
-        localStorage.setItem('galaxy_muted', state.musicMuted);
-    });
-}
+var starField;
 
 // ===== CURSOR GLOW =====
 function initCursorGlow() {
-    const glow = $('cursorGlow');
-    if (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768) { glow.style.display = 'none'; return; }
-    document.addEventListener('mousemove', (e) => { glow.style.left = e.clientX + 'px'; glow.style.top = e.clientY + 'px'; });
-}
-
-// ===== GALAXY =====
-function initGalaxy() {
-    const container = $('starsContainer');
-    STAR_POSITIONS.forEach((pos, i) => {
-        const star = document.createElement('div');
-        star.className = 'galaxy-star';
-        star.style.left = pos.x + '%';
-        star.style.top = pos.y + '%';
-        star.style.animationDelay = `${i * 0.7}s, ${i * 0.9}s`;
-        star.dataset.index = i;
-        star.textContent = '★';
-        star.setAttribute('role', 'button');
-        star.setAttribute('tabindex', '0');
-        star.setAttribute('aria-label', `Memory star ${i + 1}${state.unlocked.includes(i) ? ' (unlocked)' : ''}`);
-        if (state.unlocked.includes(i)) star.classList.add('unlocked');
-        star.addEventListener('click', () => handleStarClick(i));
-        star.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleStarClick(i); } });
-        container.appendChild(star);
+    document.addEventListener('mousemove', function(e) {
+        cursorGlow.style.left = e.clientX + 'px';
+        cursorGlow.style.top = e.clientY + 'px';
     });
-    updateProgress();
 }
 
-function updateProgress() { $('progressCount').textContent = state.unlocked.length; }
-
-function handleStarClick(index) {
-    if (state.transitioning) return;
-    if (state.unlocked.includes(index)) { showMemory(index); return; }
-    openPuzzle(index);
+// ===== AMBIENT FLOATING HEARTS =====
+function spawnFloatingHeart() {
+    var heart = document.createElement('div');
+    heart.className = 'floating-heart';
+    heart.innerHTML = ['\u2764', '\uD83D\uDC95', '\u2728', '\uD83D\uDC96'][randInt(0, 3)];
+    heart.style.left = rand(5, 95) + '%';
+    heart.style.fontSize = rand(10, 18) + 'px';
+    heart.style.animationDuration = rand(6, 12) + 's';
+    document.body.appendChild(heart);
+    setTimeout(function() { heart.remove(); }, 13000);
+}
+function startFloatingHearts() {
+    setInterval(spawnFloatingHeart, 3000);
+    setTimeout(spawnFloatingHeart, 500);
 }
 
-// ===== PUZZLE MODAL =====
-function openPuzzle(index) {
-    state.currentPuzzle = index;
-    state.transitioning = true;
-    const cfg = PUZZLES[index];
-    $('puzzleTitle').textContent = cfg.title;
-    $('puzzleInstruction').textContent = cfg.instruction;
-    $('puzzleArea').innerHTML = '';
-    showScreen('puzzleModal');
-    setTimeout(() => { cfg.init($('puzzleArea'), () => onPuzzleSolved(index)); state.transitioning = false; }, 350);
-}
-
-function closePuzzle() {
-    if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
-    $('puzzleModal').classList.remove('active');
-    state.transitioning = false;
-}
-
-function onPuzzleSolved(index) {
-    if (!state.unlocked.includes(index)) {
-        state.unlocked.push(index);
-        localStorage.setItem('galaxy_unlocked', JSON.stringify(state.unlocked));
+// ===== CELEBRATION EFFECTS =====
+function createHeartBurst(x, y, count) {
+    count = count || 24;
+    for (var i = 0; i < count; i++) {
+        var h = document.createElement('div');
+        h.className = 'heart-particle';
+        h.innerHTML = ['\u2764', '\uD83D\uDC95', '\uD83D\uDC96', '\uD83D\uDC97'][randInt(0, 3)];
+        h.style.left = x + 'px';
+        h.style.top = y + 'px';
+        var angle = (Math.PI * 2 * i) / count + rand(-0.2, 0.2);
+        var dist = rand(60, 180);
+        h.style.setProperty('--tx', (Math.cos(angle) * dist) + 'px');
+        h.style.setProperty('--ty', (Math.sin(angle) * dist) + 'px');
+        h.style.setProperty('--rot', rand(-180, 180) + 'deg');
+        h.style.fontSize = rand(12, 22) + 'px';
+        effectsContainer.appendChild(h);
+        (function(el) { setTimeout(function() { el.remove(); }, 1300); })(h);
     }
-    const star = document.querySelector(`.galaxy-star[data-index="${index}"]`);
-    if (star) star.classList.add('unlocked');
-    updateProgress();
-    closePuzzle();
-    confetti.launch(3000);
-    setTimeout(() => showMemory(index), 600);
 }
 
-// ===== MEMORY SCREEN =====
-function showMemory(index) {
-    $('memoryImage').src = `./assets/photo${index + 1}.jpg`;
-    $('memoryImage').style.display = '';
-    $('memoryImage').parentElement.classList.remove('img-fallback');
-    $('memoryText').textContent = MEMORIES[index];
-    $('heartsContainer').innerHTML = '';
-    showScreen('memoryScreen');
-    createFloatingHearts($('heartsContainer'));
-    $('memoryNextBtn').textContent = state.unlocked.length >= 6 ? 'See Our Complete Galaxy ✨' : 'Continue ✨';
+function createConfetti(count) {
+    count = count || 60;
+    var colors = ['#ff6b9d', '#ffd700', '#ff9a56', '#c084fc', '#4ade80', '#38bdf8', '#fb923c'];
+    for (var i = 0; i < count; i++) {
+        var c = document.createElement('div');
+        c.className = 'confetti-piece';
+        c.style.left = rand(0, 100) + '%';
+        c.style.backgroundColor = colors[randInt(0, colors.length - 1)];
+        c.style.width = rand(5, 10) + 'px';
+        c.style.height = rand(5, 10) + 'px';
+        c.style.borderRadius = rand(0, 1) ? '50%' : '2px';
+        c.style.animationDelay = rand(0, 0.8) + 's';
+        c.style.animationDuration = rand(2.5, 4.5) + 's';
+        c.style.setProperty('--rot', rand(360, 1080) + 'deg');
+        effectsContainer.appendChild(c);
+        (function(el) { setTimeout(function() { el.remove(); }, 5500); })(c);
+    }
 }
 
-// ===== FINAL SCREEN =====
-function showFinalScreen() {
-    $('galaxyScreen').classList.add('complete');
-    starField.boost();
-    showScreen('galaxyScreen');
-    confetti.launch(4000);
-    setTimeout(() => {
-        document.body.classList.add('final-active');
-        showScreen('finalScreen');
-        fireworks.launch(10000);
-        confetti.launch(10000);
-        createFloatingHearts($('finalHeartsContainer'), 40, 120);
-        setTimeout(() => $('finalHeart').classList.add('visible'), 2500);
-    }, 2000);
+function createStarburst(x, y, rays) {
+    rays = rays || 14;
+    for (var i = 0; i < rays; i++) {
+        var ray = document.createElement('div');
+        ray.className = 'starburst-ray';
+        ray.style.transform = 'rotate(' + ((360 / rays) * i) + 'deg)';
+        ray.style.left = x + 'px';
+        ray.style.top = y + 'px';
+        effectsContainer.appendChild(ray);
+        (function(el) { setTimeout(function() { el.remove(); }, 900); })(ray);
+    }
 }
 
-// ============================
-// PUZZLE 1: Drag Star into Constellation
-// ============================
-function initPuzzle1(container, onSolve) {
-    const W = container.clientWidth, H = container.clientHeight;
-    container.style.position = 'relative';
-    const pts = [{x:0.5,y:0.08},{x:0.15,y:0.4},{x:0.85,y:0.4},{x:0.28,y:0.78},{x:0.72,y:0.78}];
-    const target = {x:0.5,y:0.48};
-    const edges = [[0,1],[0,2],[1,3],[2,4],[1,5],[2,5],[3,5],[4,5]];
-    const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H;
-    cvs.style.cssText = 'position:absolute;top:0;left:0;'; container.appendChild(cvs);
-    const ctx = cvs.getContext('2d');
-    function drawLines(a) {
-        ctx.clearRect(0,0,W,H); ctx.strokeStyle=`rgba(255,215,0,${a})`; ctx.lineWidth=1;
-        for(const[x,y] of edges){
-            const pa=x===5?target:pts[x], pb=y===5?target:pts[y];
-            ctx.beginPath(); ctx.moveTo(pa.x*W,pa.y*H); ctx.lineTo(pb.x*W,pb.y*H); ctx.stroke();
+function playCelebrationEffects() {
+    var cx = window.innerWidth / 2;
+    var cy = window.innerHeight / 2;
+    createHeartBurst(cx, cy, 28);
+    createConfetti(70);
+    createStarburst(cx, cy, 16);
+}
+
+// ===== TYPEWRITER EFFECT =====
+async function typewriter(element, text, speed) {
+    speed = speed || 38;
+    typewriterAbort = false;
+    element.innerHTML = '<span class="cursor-blink"></span>';
+    await sleep(400);
+    var cursor = element.querySelector('.cursor-blink');
+    for (var i = 0; i < text.length; i++) {
+        if (typewriterAbort) break;
+        var ch = text[i];
+        if (ch === '\n') {
+            element.insertBefore(document.createElement('br'), cursor);
+            await sleep(280);
+        } else if ('.!?'.indexOf(ch) !== -1) {
+            element.insertBefore(document.createTextNode(ch), cursor);
+            await sleep(speed * 6);
+        } else if (',;:'.indexOf(ch) !== -1) {
+            element.insertBefore(document.createTextNode(ch), cursor);
+            await sleep(speed * 3);
+        } else if (ch === ' ') {
+            element.insertBefore(document.createTextNode(' '), cursor);
+            await sleep(speed * 0.4);
+        } else {
+            element.insertBefore(document.createTextNode(ch), cursor);
+            await sleep(speed);
         }
     }
-    drawLines(0.3);
-    pts.forEach(p => { const el=document.createElement('div'); el.className='pz1-star'; el.style.left=(p.x*W)+'px'; el.style.top=(p.y*H)+'px'; el.textContent='★'; container.appendChild(el); });
-    const tgt=document.createElement('div'); tgt.className='pz1-target'; tgt.style.left=(target.x*W)+'px'; tgt.style.top=(target.y*H)+'px'; container.appendChild(tgt);
-    const drag=document.createElement('div'); drag.className='pz1-drag'; drag.textContent='★';
-    const ox=W/2-12, oy=H-45; drag.style.left=ox+'px'; drag.style.top=oy+'px'; container.appendChild(drag);
-    let dragging=false, dOffX=0, dOffY=0;
-    function pp(e){const r=container.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
-    function onD(e){e.preventDefault();dragging=true;drag.classList.add('dragging');const p=pp(e);dOffX=p.x-parseFloat(drag.style.left);dOffY=p.y-parseFloat(drag.style.top);}
-    function onM(e){if(!dragging)return;e.preventDefault();const p=pp(e);drag.style.left=(p.x-dOffX)+'px';drag.style.top=(p.y-dOffY)+'px';}
-    function onU(){if(!dragging)return;dragging=false;drag.classList.remove('dragging');
-        const sx=parseFloat(drag.style.left),sy=parseFloat(drag.style.top),tx=target.x*W-12,ty=target.y*H-12;
-        if(Math.hypot(sx-tx,sy-ty)<45){drag.style.left=tx+'px';drag.style.top=ty+'px';drag.style.pointerEvents='none';tgt.style.display='none';drawLines(0.7);setTimeout(onSolve,700);}
-        else{drag.style.left=ox+'px';drag.style.top=oy+'px';}
+    await sleep(600);
+    if (cursor && cursor.parentNode) cursor.remove();
+}
+
+// ===== LOADING SCREEN =====
+async function runLoading() {
+    var starsEl = $('loading-stars');
+    for (var i = 0; i < 30; i++) {
+        var dot = document.createElement('div');
+        dot.className = 'loading-star-dot';
+        dot.style.left = rand(5, 95) + '%';
+        dot.style.top = rand(5, 95) + '%';
+        dot.style.animationDelay = rand(0, 2) + 's';
+        dot.style.animationDuration = rand(1.5, 3) + 's';
+        var sz = rand(1, 3) + 'px';
+        dot.style.width = sz;
+        dot.style.height = sz;
+        starsEl.appendChild(dot);
     }
-    drag.addEventListener('mousedown',onD);drag.addEventListener('touchstart',onD,{passive:false});
-    document.addEventListener('mousemove',onM);document.addEventListener('touchmove',onM,{passive:false});
-    document.addEventListener('mouseup',onU);document.addEventListener('touchend',onU);
-    puzzleCleanup=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('touchmove',onM);document.removeEventListener('mouseup',onU);document.removeEventListener('touchend',onU);};
+    
+    var progressVal = 0;
+    return new Promise(function(resolve) {
+        var interval = setInterval(function() {
+            progressVal += rand(1.5, 4);
+            if (progressVal >= 100) {
+                progressVal = 100;
+                loadingFill.style.width = '100%';
+                clearInterval(interval);
+                loadingTap.classList.add('visible'); // Show "Tap to enter"
+                resolve();
+            } else {
+                loadingFill.style.width = progressVal + '%';
+            }
+        }, 80);
+    });
 }
 
-// ============================
-// PUZZLE 2: Swap Pieces
-// ============================
-function initPuzzle2(container, onSolve) {
-    let order=[0,1,2,3];
-    do{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}}while(order.every((v,i)=>v===i));
-    const grid=document.createElement('div'); grid.className='pz2-grid';
-    const bgP=['0% 0%','100% 0%','0% 100%','100% 100%'];
-    const pieces=[];
-    order.forEach((pi,si)=>{
-        const el=document.createElement('div');el.className='pz2-piece';
-        el.style.backgroundImage='url(./assets/photo2.jpg)';el.style.backgroundPosition=bgP[pi];
-        el.dataset.piece=pi;el.setAttribute('role','button');el.setAttribute('tabindex','0');
-        grid.appendChild(el);pieces.push(el);
-    });
-    container.appendChild(grid);
-    let sel=null;
-    function check(){let s=true;pieces.forEach((el,i)=>{if(parseInt(el.dataset.piece)===i)el.classList.add('correct');else{el.classList.remove('correct');s=false;}});if(s)setTimeout(onSolve,400);}
-    function pick(el){
-        if(!sel){sel=el;el.classList.add('selected');}
-        else if(sel===el){sel.classList.remove('selected');sel=null;}
-        else{const t=sel.style.backgroundPosition;const tp=sel.dataset.piece;sel.style.backgroundPosition=el.style.backgroundPosition;sel.dataset.piece=el.dataset.piece;el.style.backgroundPosition=t;el.dataset.piece=tp;sel.classList.remove('selected');sel=null;check();}
+// ===== HOME SCREEN =====
+function buildHomeScreen() {
+    starsGrid.innerHTML = '';
+    var completedCount = 0;
+
+    for (var i = 0; i < 6; i++) {
+        var star = document.createElement('div');
+        star.className = 'home-star';
+        star.setAttribute('role', 'button');
+        star.setAttribute('tabindex', '0');
+
+        if (progress[i]) {
+            star.classList.add('completed');
+            star.innerHTML = '\uD83C\uDF1F';
+            completedCount++;
+        } else {
+            var isFirst = (i === 0);
+            var prevDone = (i > 0 && progress[i - 1]);
+            if (isFirst || prevDone) {
+                star.innerHTML = '\u2B50';
+            } else {
+                star.classList.add('locked');
+                star.innerHTML = '\u2B50';
+            }
+        }
+
+        var label = document.createElement('span');
+        label.className = 'star-label';
+        label.textContent = STAR_LABELS[i];
+        star.appendChild(label);
+
+        (function(idx, el) {
+            el.addEventListener('click', function() { handleStarClick(idx); });
+            el.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleStarClick(idx); }
+            });
+        })(i, star);
+
+        starsGrid.appendChild(star);
     }
-    pieces.forEach(el=>{el.addEventListener('click',()=>pick(el));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(el);}});});
-    puzzleCleanup=()=>{};
+    progressCount.textContent = completedCount;
 }
 
-// ============================
-// PUZZLE 3: Memory Sequence
-// ============================
-function initPuzzle3(container, onSolve) {
-    const colors=['#ff6b9d','#ffd700','#4fc3f7','#9c27b0'];
-    const syms=['♥','★','✦','◆'];
-    const seq=[];for(let i=0;i<4;i++)seq.push(Math.floor(Math.random()*4));
-    const row=document.createElement('div');row.className='pz3-row';const btns=[];
-    colors.forEach((c,i)=>{
-        const el=document.createElement('div');el.className='pz3-star';
-        el.style.background='rgba(255,255,255,0.05)';el.style.color=c;el.textContent=syms[i];el.dataset.idx=i;
-        el.setAttribute('role','button');el.setAttribute('tabindex','0');row.appendChild(el);btns.push(el);
-    });
-    container.appendChild(row);
-    let playerSeq=[],accepting=false,showing=true;
-    function flash(idx,dur=450){return new Promise(r=>{btns[idx].classList.add('flash');btns[idx].style.background=colors[idx];btns[idx].style.boxShadow=`0 0 25px ${colors[idx]}`;setTimeout(()=>{btns[idx].classList.remove('flash');btns[idx].style.background='rgba(255,255,255,0.05)';btns[idx].style.boxShadow='';setTimeout(r,200);},dur);});}
-    async function showSeq(){showing=true;accepting=false;playerSeq=[];await new Promise(r=>setTimeout(r,600));for(const i of seq)await flash(i);showing=false;accepting=true;}
-    function handleClick(idx){
-        if(!accepting||showing)return;playerSeq.push(idx);flash(idx,250);
-        if(playerSeq[playerSeq.length-1]!==seq[playerSeq.length-1]){accepting=false;btns[idx].style.color='#ff3333';setTimeout(()=>{btns[idx].style.color=colors[idx];},400);setTimeout(()=>showSeq(),800);return;}
-        if(playerSeq.length===seq.length){accepting=false;setTimeout(onSolve,500);}
+function handleStarClick(index) {
+    var isFirst = (index === 0);
+    var prevDone = (index > 0 && progress[index - 1]);
+    if (!isFirst && !prevDone && !progress[index]) return;
+
+    if (progress[index]) {
+        showReveal(index);
+    } else {
+        startPuzzle(index);
     }
-    btns.forEach((el,i)=>{el.addEventListener('click',()=>handleClick(i));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handleClick(i);}});});
-    showSeq();
-    puzzleCleanup=()=>{accepting=false;};
 }
 
-// ============================
-// PUZZLE 4: Connect Stars in Order
-// ============================
-function initPuzzle4(container, onSolve) {
-    const W=container.clientWidth,H=container.clientHeight;container.style.position='relative';
-    const pos=[{x:0.15,y:0.2},{x:0.82,y:0.15},{x:0.5,y:0.5},{x:0.2,y:0.8},{x:0.78,y:0.78}];
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
-    container.appendChild(svg);
-    const starEls=[];let connected=0;
-    pos.forEach((p,i)=>{
-        const el=document.createElement('div');el.className='pz4-star';el.style.left=(p.x*W)+'px';el.style.top=(p.y*H)+'px';
-        el.innerHTML=`★<span class="pz4-num">${i+1}</span>`;el.dataset.idx=i;
-        el.setAttribute('role','button');el.setAttribute('tabindex','0');container.appendChild(el);starEls.push(el);
-    });
-    function drawLine(f,t){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',pos[f].x*W);l.setAttribute('y1',pos[f].y*H);l.setAttribute('x2',pos[t].x*W);l.setAttribute('y2',pos[t].y*H);l.setAttribute('stroke','rgba(255,215,0,0.5)');l.setAttribute('stroke-width','2');l.setAttribute('stroke-linecap','round');svg.appendChild(l);}
-    function handleClick(idx){
-        if(idx!==connected){starEls[idx].classList.add('wrong');setTimeout(()=>starEls[idx].classList.remove('wrong'),500);return;}
-        starEls[idx].classList.add('connected');if(connected>0)drawLine(connected-1,idx);connected++;
-        if(connected===5)setTimeout(onSolve,600);
-    }
-    starEls.forEach((el,i)=>{el.addEventListener('click',()=>handleClick(i));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handleClick(i);}});});
-    puzzleCleanup=()=>{};
+// ===== PUZZLE MANAGEMENT =====
+function startPuzzle(index) {
+    currentPuzzle = index;
+    puzzleTitle.textContent = PUZZLE_INFO[index].title;
+    puzzleInstruction.textContent = PUZZLE_INFO[index].instruction;
+    puzzleArea.innerHTML = '';
+
+    var inits = [initPuzzle1, initPuzzle2, initPuzzle3, initPuzzle4, initPuzzle5, initPuzzle6];
+    puzzleCleanup = inits[index](puzzleArea);
+    showScreen(puzzleScreen);
 }
 
-// ============================
-// PUZZLE 5: Rotate Pieces
-// ============================
-function initPuzzle5(container, onSolve) {
-    const rots=[0,90,180,270];let st;do{st=rots.map(()=>rots[Math.floor(Math.random()*4)]);}while(st.every(r=>r===0));
-    const grid=document.createElement('div');grid.className='pz5-grid';
-    const bgP=['0% 0%','100% 0%','0% 100%','100% 100%'];const pieces=[];
-    st.forEach((r,i)=>{
-        const el=document.createElement('div');el.className='pz5-piece';
-        el.style.backgroundImage='url(./assets/photo5.jpg)';el.style.backgroundPosition=bgP[i];
-        el.style.transform=`rotate(${r}deg)`;el.dataset.rot=r;el.dataset.idx=i;
-        el.setAttribute('role','button');el.setAttribute('tabindex','0');grid.appendChild(el);pieces.push(el);
-    });
-    container.appendChild(grid);
-    function check(){if(pieces.every(el=>parseInt(el.dataset.rot)%360===0))setTimeout(onSolve,500);}
-    pieces.forEach(el=>{
-        function rotate(){let r=(parseInt(el.dataset.rot)+90)%360;el.dataset.rot=r;el.style.transform=`rotate(${r}deg)`;check();}
-        el.addEventListener('click',rotate);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();rotate();}});
-    });
-    puzzleCleanup=()=>{};
-}
-
-// ============================
-// PUZZLE 6: Find Hidden Star
-// ============================
-function initPuzzle6(container, onSolve) {
-    const total=16,hi=Math.floor(Math.random()*total);
-    const grid=document.createElement('div');grid.className='pz6-grid';
-    for(let i=0;i<total;i++){
-        const el=document.createElement('div');el.className='pz6-star';el.textContent='★';
-        if(i===hi)el.classList.add('hidden-star');
-        el.setAttribute('role','button');el.setAttribute('tabindex','0');
-        el.addEventListener('click',()=>{
-            if(i===hi){el.style.color='#ffd700';el.style.textShadow='0 0 25px #ffd700, 0 0 50px rgba(255,215,0,0.5)';el.style.transform='scale(1.4)';setTimeout(onSolve,600);}
-            else{el.classList.add('wrong-pick');el.style.animation='pz6-shake 0.4s ease';setTimeout(()=>{el.classList.remove('wrong-pick');el.style.animation='';},500);}
-        });
-        el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});
-        grid.appendChild(el);
-    }
-    container.appendChild(grid);
-    puzzleCleanup=()=>{};
-}
-
-// ===== INIT =====
-let starField, confetti, fireworks;
-
-document.addEventListener('DOMContentLoaded', () => {
-    starField = new StarField($('starCanvas'));
-    confetti = new ConfettiSystem($('confettiCanvas'));
-    fireworks = new FireworksSystem($('fireworksCanvas'));
-    initMusic();
-    initCursorGlow();
-    initLoading();
-    initGalaxy();
-    $('puzzleCloseBtn').addEventListener('click', closePuzzle);
-    $('memoryNextBtn').addEventListener('click', () => {
-        if (state.unlocked.length >= 6) showFinalScreen(); else showScreen('galaxyScreen');
-    });
-    $('memoryImage').addEventListener('error', function() { this.style.display='none'; this.parentElement.classList.add('img-fallback'); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('puzzleModal').classList.contains('active')) closePuzzle(); });
+puzzleBack.addEventListener('click', function() {
+    if (puzzleCleanup) { puzzleCleanup(); puzzleCleanup = null; }
+    showScreen(homeScreen);
 });
+
+async function completePuzzle(index) {
+    progress[index] = true;
+    saveProgress();
+    await sleep(600);
+    playCelebrationEffects();
+    await sleep(800);
+    showReveal(index);
+}
+
+// ===== REVEAL SCREEN =====
+async function showReveal(index) {
+    revealNextBtn.classList.remove('visible');
+    revealPhotoWrap.classList.remove('visible');
+    revealText.innerHTML = '';
+    revealPhoto.src = PHOTO_URLS[index];
+    showScreen(revealScreen);
+
+    await sleep(300);
+    revealPhotoWrap.classList.add('visible');
+    await sleep(500);
+
+    await typewriter(revealText, MESSAGES[index], 36);
+    await sleep(400);
+    revealNextBtn.classList.add('visible');
+
+    var allDone = true;
+    for(var i=0; i<progress.length; i++) { if(!progress[i]) allDone = false; }
+
+    if (allDone) {
+        revealNextBtn.innerHTML = 'See Our Universe <i class="fas fa-heart"></i>';
+    } else {
+        revealNextBtn.innerHTML = 'Continue <i class="fas fa-arrow-right"></i>';
+    }
+}
+
+revealNextBtn.addEventListener('click', function() {
+    typewriterAbort = true;
+    var allDone = true;
+    for(var i=0; i<progress.length; i++) { if(!progress[i]) allDone = false; }
+    
+    if (allDone) {
+        showFinalScene();
+    } else {
+        buildHomeScreen();
+        showScreen(homeScreen);
+    }
+});
+
+// ================================================================
+// PUZZLE 1: CONSTELLATION DRAG
+// ================================================================
+function initPuzzle1(area) {
+    var container = document.createElement('div');
+    container.className = 'p1-container';
+    area.appendChild(container);
+
+    var points = [
+        { x: 150, y: 30 }, { x: 260, y: 100 }, { x: 220, y: 220 },
+        { x: 80, y: 220 }, { x: 40, y: 100 }
+    ];
+    var missingIdx = 2;
+    var connections = [[0,1],[1,2],[2,3],[3,4],[4,0]];
+    var ns = 'http://www.w3.org/2000/svg';
+    
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '300'); svg.setAttribute('height', '260');
+    svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    container.appendChild(svg);
+
+    var lines = [];
+    for (var c = 0; c < connections.length; c++) {
+        var a = connections[c][0], b = connections[c][1];
+        var line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', points[a].x); line.setAttribute('y1', points[a].y);
+        line.setAttribute('x2', points[b].x); line.setAttribute('y2', points[b].y);
+        var isDash = (a === missingIdx || b === missingIdx);
+        line.setAttribute('stroke', isDash ? 'rgba(255,215,0,0.12)' : 'rgba(255,215,0,0.25)');
+        line.setAttribute('stroke-width', '1.5');
+        if (isDash) line.setAttribute('stroke-dasharray', '5,5');
+        svg.appendChild(line);
+        lines.push({ line: line, dash: isDash });
+    }
+
+    for (var i = 0; i < points.length; i++) {
+        if (i === missingIdx) {
+            var target = document.createElement('div');
+            target.className = 'star-target';
+            target.style.left = points[i].x + 'px'; target.style.top = points[i].y + 'px';
+            container.appendChild(target);
+        } else {
+            var star = document.createElement('div');
+            star.className = 'constellation-star';
+            star.style.left = points[i].x + 'px'; star.style.top = points[i].y + 'px';
+            container.appendChild(star);
+        }
+    }
+
+    var drag = document.createElement('div');
+    drag.className = 'draggable-star';
+    drag.style.left = '140px'; drag.style.top = '270px';
+    container.appendChild(drag);
+
+    var dragging = false, offX = 0, offY = 0;
+
+    function onDown(e) {
+        if (drag.classList.contains('snapped')) return;
+        dragging = true; drag.setPointerCapture(e.pointerId);
+        var rect = drag.getBoundingClientRect();
+        offX = e.clientX - rect.left - rect.width / 2;
+        offY = e.clientY - rect.top - rect.height / 2;
+        drag.style.zIndex = '100'; drag.style.transition = 'none';
+    }
+    function onMove(e) {
+        if (!dragging) return;
+        var cRect = container.getBoundingClientRect();
+        drag.style.left = (e.clientX - cRect.left - offX) + 'px';
+        drag.style.top = (e.clientY - cRect.top - offY) + 'px';
+    }
+    function onUp() {
+        if (!dragging) return; dragging = false;
+        var tgt = points[missingIdx];
+        var dx = parseFloat(drag.style.left) - tgt.x;
+        var dy = parseFloat(drag.style.top) - tgt.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 45) {
+            drag.style.left = tgt.x + 'px'; drag.style.top = tgt.y + 'px';
+            drag.classList.add('snapped');
+            for (var l = 0; l < lines.length; l++) {
+                if (lines[l].dash) {
+                    lines[l].line.setAttribute('stroke-dasharray', 'none');
+                    lines[l].line.setAttribute('stroke', 'rgba(255,215,0,0.25)');
+                }
+            }
+            var t = container.querySelector('.star-target'); if (t) t.style.display = 'none';
+            setTimeout(function() { completePuzzle(0); }, 700);
+        }
+    }
+
+    drag.addEventListener('pointerdown', onDown);
+    drag.addEventListener('pointermove', onMove);
+    drag.addEventListener('pointerup', onUp);
+    drag.style.touchAction = 'none';
+    return function() { dragging = false; };
+}
+
+// ================================================================
+// PUZZLE 2: JIGSAW SWAP
+// ================================================================
+function initPuzzle2(area) {
+    var grid = document.createElement('div'); grid.className = 'jigsaw-grid'; area.appendChild(grid);
+    var positions = [{bgX:'0%',bgY:'0%'},{bgX:'100%',bgY:'0%'},{bgX:'0%',bgY:'100%'},{bgX:'100%',bgY:'100%'}];
+    var order = [0, 1, 2, 3];
+    do { for(var i=3;i>0;i--){var j=randInt(0,i);var t=order[i];order[i]=order[j];order[j]=t;} } 
+    while (order[0]===0 && order[1]===1 && order[2]===2 && order[3]===3);
+
+    var pieces = [];
+    for(var s=0; s<order.length; s++){
+        var posIdx = order[s]; var piece = document.createElement('div'); piece.className='jigsaw-piece';
+        piece.style.backgroundImage = 'url('+PHOTO_URLS[1]+')';
+        piece.style.backgroundPosition = positions[posIdx].bgX+' '+positions[posIdx].bgY;
+        piece.dataset.posIndex = posIdx; piece.setAttribute('tabindex','0');
+        grid.appendChild(piece); pieces.push(piece);
+    }
+    var selected = null;
+    function handlePieceClick(p){
+        if(p.classList.contains('correct')) return;
+        if(!selected){ selected=p; p.classList.add('selected'); }
+        else if(selected===p){ selected.classList.remove('selected'); selected=null; }
+        else {
+            var tBg=selected.style.backgroundPosition, tIdx=selected.dataset.posIndex;
+            selected.style.backgroundPosition=p.style.backgroundPosition; selected.dataset.posIndex=p.dataset.posIndex;
+            p.style.backgroundPosition=tBg; p.dataset.posIndex=tIdx;
+            selected.classList.remove('selected'); selected=null; checkSolved();
+        }
+    }
+    function checkSolved(){
+        var solved=true;
+        for(var i=0;i<pieces.length;i++){
+            if(parseInt(pieces[i].dataset.posIndex)===i) pieces[i].classList.add('correct');
+            else { pieces[i].classList.remove('correct'); solved=false; }
+        }
+        if(solved) setTimeout(function(){completePuzzle(1);}, 600);
+    }
+    for(var p=0;p<pieces.length;p++){
+        (function(el){ el.onclick=function(){handlePieceClick(el);}; el.onkeydown=function(e){if(e.key==='Enter')handlePieceClick(el);}; })(pieces[p]);
+    }
+    return function(){};
+}
+
+// ================================================================
+// PUZZLE 3: MEMORY SEQUENCE
+// ================================================================
+function initPuzzle3(area) {
+    var wrap=document.createElement('div'); wrap.style.textAlign='center'; area.appendChild(wrap);
+    var c=document.createElement('div'); c.className='memory-stars'; wrap.appendChild(c);
+    var status=document.createElement('div'); status.className='memory-status'; status.textContent='Watch carefully...'; wrap.appendChild(status);
+    var icons=['\u2726','\u2727','\u27E1','\u2736','\u2734'], els=[];
+    for(var i=0;i<5;i++){var s=document.createElement('div');s.className='memory-star disabled';s.innerHTML=icons[i];s.dataset.index=i;s.setAttribute('tabindex','0');c.appendChild(s);els.push(s);}
+    var seq=[2,0,4,1], inp=[], accepting=false;
+    function flash(idx,dur){dur=dur||500;return new Promise(function(r){els[idx].classList.add('flash');setTimeout(function(){els[idx].classList.remove('flash');setTimeout(r,200);},dur);});}
+    async function playSeq(){
+        status.textContent='Watch carefully...'; accepting=false;
+        for(var i=0;i<els.length;i++) els[i].classList.add('disabled');
+        await sleep(600); for(var j=0;j<seq.length;j++) await flash(seq[j],500);
+        status.textContent='Your turn! Repeat the sequence.';
+        for(var k=0;k<els.length;k++) els[k].classList.remove('disabled');
+        inp=[]; accepting=true;
+    }
+    function click(idx){
+        if(!accepting) return;
+        if(seq[inp.length]===idx){
+            els[idx].classList.add('correct-flash'); setTimeout(function(){els[idx].classList.remove('correct-flash');},400);
+            inp.push(idx);
+            if(inp.length===seq.length){ accepting=false; status.textContent='Perfect!'; for(var i=0;i<els.length;i++) els[i].classList.add('disabled'); setTimeout(function(){completePuzzle(2);},700); }
+        } else {
+            els[idx].classList.add('wrong'); setTimeout(function(){els[idx].classList.remove('wrong');},500);
+            status.textContent='Wrong! Watch again...'; inp=[]; accepting=false; setTimeout(playSeq, 1200);
+        }
+    }
+    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
+    setTimeout(playSeq, 500);
+    return function(){accepting=false;};
+}
+
+// ================================================================
+// PUZZLE 4: CONNECT THE STARS
+// ================================================================
+function initPuzzle4(area) {
+    var con=document.createElement('div'); con.className='p4-container'; area.appendChild(con);
+    var pts=[{x:150,y:240},{x:50,y:130},{x:60,y:60},{x:150,y:90},{x:240,y:60},{x:250,y:130}];
+    var order=[0,1,2,3,4,5,0], ns='http://www.w3.org/2000/svg';
+    var svg=document.createElementNS(ns,'svg'); svg.setAttribute('width','300'); svg.setAttribute('height','280');
+    svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;'; con.appendChild(svg);
+    var els=[], conn=[], lines=[];
+    for(var i=0;i<pts.length;i++){var s=document.createElement('div');s.className='p4-star';s.style.left=pts[i].x+'px';s.style.top=pts[i].y+'px';s.dataset.index=i;s.setAttribute('tabindex','0');con.appendChild(s);els.push(s);}
+    var hint=document.createElement('div');hint.className='p4-hint';hint.textContent='Start from the bottom star';area.appendChild(hint);
+    function drawLine(f,t){var l=document.createElementNS(ns,'line');l.setAttribute('x1',pts[f].x);l.setAttribute('y1',pts[f].y);l.setAttribute('x2',pts[t].x);l.setAttribute('y2',pts[t].y);l.setAttribute('stroke','rgba(255,215,0,0.5)');l.setAttribute('stroke-width','2');l.setAttribute('stroke-linecap','round');svg.appendChild(l);return l;}
+    function reset(){conn=[];for(var i=0;i<lines.length;i++)lines[i].remove();lines=[];for(var j=0;j<els.length;j++)els[j].classList.remove('connected','wrong-star');}
+    function click(idx){
+        if(idx===order[conn.length]){
+            if(conn.length>0){var p=conn[conn.length-1];lines.push(drawLine(p,idx));}
+            conn.push(idx); els[idx].classList.add('connected');
+            if(conn.length===order.length) setTimeout(function(){completePuzzle(3);},600);
+        } else { els[idx].classList.add('wrong-star'); setTimeout(function(){els[idx].classList.remove('wrong-star');},500); reset(); }
+    }
+    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
+    return function(){for(var i=0;i<lines.length;i++)lines[i].remove();};
+}
+
+// ================================================================
+// PUZZLE 5: ROTATE PUZZLE
+// ================================================================
+function initPuzzle5(area) {
+    var grid=document.createElement('div'); grid.className='rotate-grid'; area.appendChild(grid);
+    var pos=[{bgX:'0%',bgY:'0%'},{bgX:'100%',bgY:'0%'},{bgX:'0%',bgY:'100%'},{bgX:'100%',bgY:'100%'}];
+    var pieces=[], rots=[];
+    do{rots=[];for(var r=0;r<4;r++)rots.push(randInt(1,3));}while(false);
+    for(var i=0;i<4;i++){var p=document.createElement('div');p.className='rotate-piece';p.style.backgroundImage='url('+PHOTO_URLS[4]+')';p.style.backgroundPosition=pos[i].bgX+' '+pos[i].bgY;p.style.transform='rotate('+(rots[i]*90)+'deg)';p.dataset.rotation=rots[i];p.setAttribute('tabindex','0');grid.appendChild(p);pieces.push(p);}
+    function click(p){var r=(parseInt(p.dataset.rotation)+1)%4;p.dataset.rotation=r;p.style.transform='rotate('+(r*90)+'deg)';if(r===0)p.classList.add('correct-rot');else p.classList.remove('correct-rot');var ok=true;for(var j=0;j<pieces.length;j++)if(parseInt(pieces[j].dataset.rotation)!==0)ok=false;if(ok)setTimeout(function(){completePuzzle(4);},600);}
+    for(var pi=0;pi<pieces.length;pi++){(function(el){el.onclick=function(){click(el);};el.onkeydown=function(e){if(e.key==='Enter')click(el);};})(pieces[pi]);}
+    return function(){};
+}
+
+// ================================================================
+// PUZZLE 6: FIND THE HIDDEN STAR
+// ================================================================
+function initPuzzle6(area) {
+    var con=document.createElement('div'); con.className='p6-container'; area.appendChild(con);
+    var status=document.createElement('div'); status.className='p6-status'; status.textContent='Look carefully...'; area.appendChild(status);
+    var tot=45, hid=randInt(0,tot-1), wrong=0, found=false, els=[];
+    for(var i=0;i<tot;i++){var s=document.createElement('div');s.className='p6-star';var sz=(i===hid)?5:rand(3,7);s.style.width=sz+'px';s.style.height=sz+'px';s.style.left=rand(8,92)+'%';s.style.top=rand(8,92)+'%';s.style.opacity=rand(0.4,0.9);if(i===hid){s.classList.add('hidden-star');s.style.width='5px';s.style.height='5px';s.style.opacity='0.4';}s.dataset.index=i;s.setAttribute('tabindex','0');con.appendChild(s);els.push(s);}
+    function click(idx){if(found)return;if(idx===hid){found=true;els[idx].classList.add('found-star');status.textContent='You found it!';setTimeout(function(){completePuzzle(5);},800);}else{wrong++;els[idx].classList.add('wrong-click');(function(el){setTimeout(function(){el.classList.remove('wrong-click');},400);})(els[idx]);if(wrong>=5){status.textContent='Hint: Look for the one that pulses...';els[hid].classList.add('hint-active');}else{status.textContent='Not that one. Try again. ('+wrong+'/5)';}}}
+    for(var si=0;si<els.length;si++){(function(el){el.onclick=function(){click(parseInt(el.dataset.index));};el.onkeydown=function(e){if(e.key==='Enter')click(parseInt(el.dataset.index));};})(els[si]);}
+    return function(){found=true;};
+}
+
+// ================================================================
+// FINAL SCENE
+// ================================================================
+async function showFinalScene() {
+    finalHeart.classList.remove('visible'); finalText.innerHTML = ''; restartBtn.classList.remove('visible'); fireworksCanvas.classList.remove('active');
+    showScreen(finalScreen);
+    starField.intensify();
+    fireworksCanvas.classList.add('active');
+    startFireworks();
+    await sleep(800); finalHeart.classList.add('visible'); await sleep(1500);
+    createHeartBurst(window.innerWidth/2, window.innerHeight/2, 30); createConfetti(80);
+    await sleep(800);
+    var msg = 'Congratulations \u2764\uFE0F\n\nThese six photos are only a tiny part of our story.\n\nEvery laugh,\nevery conversation,\nevery little moment with you\nhas become something I treasure.\n\nThank you for being the most beautiful chapter of my life.\n\nNo matter what tomorrow brings,\nI\'ll always be grateful\nthat our paths crossed.\n\nYou make my world brighter\nin ways you\'ll never truly know.\n\nI love you more than words can ever explain.\n\n\u2764\uFE0F Forever Yours,\nYour Beloved,\nPrit \u2764\uFE0F';
+    await typewriter(finalText, msg, 32);
+    await sleep(600); restartBtn.classList.add('visible');
+}
+
+// ================================================================
+// FIREWORKS (Canvas Particles)
+// ================================================================
+var fwRunning = false, fwList = [], fwCtx;
+function startFireworks() {
+    fwRunning = true; fwList = []; fireworksCanvas.width = window.innerWidth; fireworksCanvas.height = window.innerHeight; fwCtx = fireworksCanvas.getContext('2d');
+    launchFw(); var int = setInterval(function(){ if(!fwRunning){clearInterval(int);return;} launchFw(); }, 800); animFw();
+}
+function launchFw() {
+    var cols=['rgba(255,107,157,1)','rgba(255,215,0,1)','rgba(192,132,252,1)','rgba(74,222,128,1)','rgba(56,189,248,1)'];
+    var fw={x:rand(fireworksCanvas.width*0.15,fireworksCanvas.width*0.85),y:rand(fireworksCanvas.height*0.1,fireworksCanvas.height*0.5),particles:[],color:cols[randInt(0,cols.length-1)]};
+    var cnt=randInt(40,70); for(var i=0;i<cnt;i++){var a=(Math.PI*2*i)/cnt+rand(-0.1,0.1),sp=rand(1.5,5);fw.particles.push({x:fw.x,y:fw.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:rand(0.008,0.018),size:rand(1.5,3)});}
+    fwList.push(fw);
+}
+function animFw() {
+    if(!fwRunning){if(fwCtx)fwCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height);return;}
+    fwCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height);
+    for(var f=fwList.length-1;f>=0;f--){var fw=fwList[f];for(var p=fw.particles.length-1;p>=0;p--){var pt=fw.particles[p];pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=0.04;pt.vx*=0.99;pt.life-=pt.decay;if(pt.life<=0){fw.particles.splice(p,1);continue;}var al=Math.max(0,pt.life);fwCtx.beginPath();fwCtx.arc(pt.x,pt.y,Math.max(0.5,pt.size*pt.life),0,Math.PI*2);fwCtx.fillStyle=fw.color.replace(',1)',','+al+')');fwCtx.fill();fwCtx.beginPath();fwCtx.arc(pt.x,pt.y,Math.max(0.5,pt.size*3*pt.life),0,Math.PI*2);fwCtx.fillStyle=fw.color.replace(',1)',','+(al*0.15)+')');fwCtx.fill();}if(fw.particles.length===0)fwList.splice(f,1);}
+    requestAnimationFrame(animFw);
+}
+
+// ===== RESTART =====
+restartBtn.addEventListener('click', function() {
+    typewriterAbort = true; fwRunning = false; fireworksCanvas.classList.remove('active'); fwList = [];
+    progress = [false, false, false, false, false, false]; saveProgress();
+    starField.intensified = false; starField.createStars(200);
+    showScreen(loadingScreen); loadingFill.style.width = '0%'; loadingTap.classList.remove('visible');
+    setTimeout(async function() { await runLoading(); }, 300);
+});
+
+window.addEventListener('resize', function() { if(fwRunning){fireworksCanvas.width=window.innerWidth;fireworksCanvas.height=window.innerHeight;} });
+
+// ===== INITIALIZATION =====
+async function init() {
+    loadProgress();
+    starField = new StarField(starCanvas);
+    initCursorGlow();
+    startFloatingHearts();
+    
+    // Run loading animation
+    await runLoading();
+    
+    // Wait for user to click to enter (Required for Web Audio API)
+    function enterSite() {
+        loadingScreen.removeEventListener('click', enterSite);
+        loadingScreen.removeEventListener('touchend', enterSite);
+        
+        // Start Fairytale Music
+        fairytaleMusic.start();
+        musicIcon.className = 'fas fa-volume-high';
+        musicBtn.classList.add('visible', 'playing');
+        
+        buildHomeScreen();
+        showScreen(homeScreen);
+    }
+    loadingScreen.addEventListener('click', enterSite);
+    loadingScreen.addEventListener('touchend', enterSite);
+}
+
+init();
